@@ -6,18 +6,34 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { SupabaseConfigAlert } from '../../components/feedback/SupabaseConfigAlert';
 import { CookiePolicyModal } from './CookiePolicyModal';
-import { Lock, Mail, ShieldAlert, ArrowRight, Info } from 'lucide-react';
+import { Lock, Mail, User, Info, UserPlus, LogIn } from 'lucide-react';
 
 export function LoginPage() {
-  const { loginWithGoogle, loginWithEmail, requestPasswordReset, isSupabaseConfigured, user, profile, accessDenied } = useAuth();
-  const { error: toastError, success: toastSuccess } = useToast();
+  const {
+    loginWithGoogle,
+    loginWithEmail,
+    registerWithEmail,
+    requestPasswordReset,
+    isSupabaseConfigured,
+    user,
+    profile,
+    accessDenied,
+  } = useAuth();
+  const { error: toastError, success: toastSuccess, info: toastInfo } = useToast();
   const navigate = useNavigate();
   const location = useLocation();
 
-  const [authMethod, setAuthMethod] = useState('google'); // 'google' | 'email'
+  const [authMethod, setAuthMethod] = useState('google'); // 'google' as primary
+  const [isRegisterMode, setIsRegisterMode] = useState(false);
+
+  // Form Fields
+  const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+
+  // Forgot password
   const [showForgotModal, setShowForgotModal] = useState(false);
   const [forgotEmail, setForgotEmail] = useState('');
   const [showCookieModal, setShowCookieModal] = useState(false);
@@ -45,22 +61,50 @@ export function LoginPage() {
     }
   }
 
-  async function handleEmailLogin(e) {
+  async function handleEmailAuth(e) {
     e.preventDefault();
     if (!email || !password) {
       toastError('Harap masukkan email dan kata sandi.');
       return;
     }
 
-    try {
-      setIsLoading(true);
-      await loginWithEmail(email, password);
-      const from = location.state?.from?.pathname || '/dashboard';
-      navigate(from, { replace: true });
-    } catch (err) {
-      toastError(err.message || 'Login gagal. Periksa email atau password Anda.');
-    } finally {
-      setIsLoading(false);
+    if (isRegisterMode) {
+      if (password.length < 6) {
+        toastError('Kata sandi minimal 6 karakter.');
+        return;
+      }
+      if (password !== confirmPassword) {
+        toastError('Konfirmasi kata sandi tidak cocok.');
+        return;
+      }
+
+      try {
+        setIsLoading(true);
+        const res = await registerWithEmail(email, password, fullName);
+        if (res.session) {
+          toastSuccess('Akun berhasil didaftarkan dan Anda langsung masuk!');
+          const from = location.state?.from?.pathname || '/dashboard';
+          navigate(from, { replace: true });
+        } else {
+          toastSuccess('Pendaftaran berhasil! Silakan masuk dengan email dan kata sandi Anda.');
+          setIsRegisterMode(false);
+        }
+      } catch (err) {
+        toastError(err.message || 'Gagal mendaftar akun.');
+      } finally {
+        setIsLoading(false);
+      }
+    } else {
+      try {
+        setIsLoading(true);
+        await loginWithEmail(email, password);
+        const from = location.state?.from?.pathname || '/dashboard';
+        navigate(from, { replace: true });
+      } catch (err) {
+        toastError(err.message || 'Login gagal. Periksa email atau password Anda.');
+      } finally {
+        setIsLoading(false);
+      }
     }
   }
 
@@ -110,7 +154,7 @@ export function LoginPage() {
           }}
         >
           {/* Header & Logo */}
-          <div style={{ textAlign: 'center', marginBottom: '28px' }}>
+          <div style={{ textAlign: 'center', marginBottom: '24px' }}>
             <div
               style={{
                 width: '44px',
@@ -165,7 +209,10 @@ export function LoginPage() {
             </button>
             <button
               type="button"
-              onClick={() => setAuthMethod('email')}
+              onClick={() => {
+                setAuthMethod('email');
+                setIsRegisterMode(false);
+              }}
               style={{
                 flex: 1,
                 padding: '6px 12px',
@@ -227,13 +274,49 @@ export function LoginPage() {
               </button>
             </div>
           ) : (
-            <form onSubmit={handleEmailLogin} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            <form onSubmit={handleEmailAuth} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  marginBottom: '2px',
+                }}
+              >
+                <span style={{ fontSize: '0.8125rem', fontWeight: 600 }}>
+                  {isRegisterMode ? 'Daftar Akun Staf Baru' : 'Masuk dengan Email BMU'}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setIsRegisterMode(!isRegisterMode)}
+                  style={{
+                    fontSize: '0.75rem',
+                    color: 'var(--accent-primary)',
+                    textDecoration: 'underline',
+                    cursor: 'pointer',
+                  }}
+                >
+                  {isRegisterMode ? 'Sudah punya akun? Masuk' : 'Buat akun penguji'}
+                </button>
+              </div>
+
+              {isRegisterMode && (
+                <Input
+                  label="Nama Lengkap Staf"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  placeholder="Contoh: Hesti BMU"
+                  leadIcon={User}
+                  required
+                />
+              )}
+
               <Input
-                label="Alamat Email BMU"
+                label="Alamat Email Staf"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="nama@bmu.co.id"
+                placeholder="nama@bmu.co.id atau nama@gmail.com"
                 leadIcon={Mail}
                 required
               />
@@ -243,24 +326,38 @@ export function LoginPage() {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
+                placeholder="Minimal 6 karakter"
                 leadIcon={Lock}
                 required
               />
 
-              <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                <button
-                  type="button"
-                  onClick={() => setShowForgotModal(true)}
-                  style={{
-                    fontSize: '0.75rem',
-                    color: 'var(--text-tertiary)',
-                    textDecoration: 'underline',
-                  }}
-                >
-                  Lupa kata sandi?
-                </button>
-              </div>
+              {isRegisterMode && (
+                <Input
+                  label="Konfirmasi Kata Sandi"
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Ulangi kata sandi"
+                  leadIcon={Lock}
+                  required
+                />
+              )}
+
+              {!isRegisterMode && (
+                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                  <button
+                    type="button"
+                    onClick={() => setShowForgotModal(true)}
+                    style={{
+                      fontSize: '0.75rem',
+                      color: 'var(--text-tertiary)',
+                      textDecoration: 'underline',
+                    }}
+                  >
+                    Lupa kata sandi?
+                  </button>
+                </div>
+              )}
 
               <Button
                 type="submit"
@@ -269,8 +366,9 @@ export function LoginPage() {
                 disabled={!isSupabaseConfigured}
                 className="w-full"
                 style={{ width: '100%', height: '42px', marginTop: '6px' }}
+                icon={isRegisterMode ? UserPlus : LogIn}
               >
-                Masuk ke Student Hub
+                {isRegisterMode ? 'Daftar & Masuk' : 'Masuk ke Student Hub'}
               </Button>
             </form>
           )}

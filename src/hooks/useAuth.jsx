@@ -33,11 +33,73 @@ export function AuthProvider({ children }) {
         setAccessDenied(false);
         setDeniedEmail('');
         return data;
-      } else {
-        // User exists in auth, but either has no profile or is_active is false
+      } else if (data && !data.is_active) {
         setProfile(null);
         setAccessDenied(true);
-        setDeniedEmail(userEmail || (data ? data.email : ''));
+        setDeniedEmail(userEmail || data.email || '');
+        return null;
+      } else {
+        // No profile found in profiles table yet (e.g. trigger didn't run or table empty)
+        // Check if there are any profiles at all in the database
+        const { count } = await supabase
+          .from('profiles')
+          .select('*', { count: 'exact', head: true });
+
+        // If this is the very first user in the entire system, auto-bootstrap as Admin!
+        if (count === 0) {
+          const newProfile = {
+            id: userId,
+            email: userEmail,
+            full_name: userEmail?.split('@')[0] || 'Administrator BMU',
+            role: 'admin',
+            is_active: true,
+          };
+          const { data: inserted, error: insertErr } = await supabase
+            .from('profiles')
+            .insert([newProfile])
+            .select()
+            .single();
+
+          if (!insertErr && inserted) {
+            setProfile(inserted);
+            setAccessDenied(false);
+            setDeniedEmail('');
+            return inserted;
+          }
+        }
+
+        // If not first user, check internal_allowlist
+        const { data: allowRow } = await supabase
+          .from('internal_allowlist')
+          .select('*')
+          .ilike('email', userEmail)
+          .maybeSingle();
+
+        if (allowRow) {
+          const newProfile = {
+            id: userId,
+            email: userEmail,
+            full_name: allowRow.full_name || userEmail?.split('@')[0],
+            role: allowRow.default_role || 'sensei_staff',
+            is_active: true,
+          };
+          const { data: inserted } = await supabase
+            .from('profiles')
+            .insert([newProfile])
+            .select()
+            .single();
+
+          if (inserted) {
+            setProfile(inserted);
+            setAccessDenied(false);
+            setDeniedEmail('');
+            return inserted;
+          }
+        }
+
+        setProfile(null);
+        setAccessDenied(true);
+        setDeniedEmail(userEmail || '');
         return null;
       }
     } catch (err) {
@@ -127,7 +189,7 @@ export function AuthProvider({ children }) {
     }
 
     const { data, error } = await supabase.auth.signInWithPassword({
-      email,
+      email: email.trim().toLowerCase(),
       password,
     });
 
@@ -144,13 +206,43 @@ export function AuthProvider({ children }) {
     return data;
   }
 
+  // Register new staff account with Email & Password
+  async function registerWithEmail(email, password, fullName) {
+    if (!isSupabaseConfigured) {
+      throw new Error('Supabase belum dikonfigurasi di file .env.local');
+    }
+
+    const cleanEmail = email.trim().toLowerCase();
+    const { data, error } = await supabase.auth.signUp({
+      email: cleanEmail,
+      password,
+      options: {
+        data: {
+          full_name: fullName,
+        },
+      },
+    });
+
+    if (error) throw error;
+
+    if (data.user) {
+      // If session exists (email confirmation disabled in Supabase), fetch/init profile
+      if (data.session) {
+        setUser(data.user);
+        await fetchUserProfile(data.user.id, data.user.email);
+      }
+    }
+
+    return data;
+  }
+
   // Request password reset
   async function requestPasswordReset(email) {
     if (!isSupabaseConfigured) {
       throw new Error('Supabase belum dikonfigurasi di file .env.local');
     }
 
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
       redirectTo: `${window.location.origin}/auth/reset-password`,
     });
 
@@ -182,6 +274,7 @@ export function AuthProvider({ children }) {
     isSupabaseConfigured,
     loginWithGoogle,
     loginWithEmail,
+    registerWithEmail,
     requestPasswordReset,
     logout,
     refreshProfile: () => (user ? fetchUserProfile(user.id, user.email) : null),
