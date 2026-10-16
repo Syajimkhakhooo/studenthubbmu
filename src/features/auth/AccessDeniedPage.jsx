@@ -96,15 +96,27 @@ export function AccessDeniedPage() {
           </div>
         </div>
 
-        <Button
-          variant="outline"
-          className="w-full"
-          style={{ width: '100%' }}
-          icon={LogOut}
-          onClick={logout}
-        >
-          Keluar &amp; Gunakan Akun Lain
-        </Button>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <Button
+            variant="primary"
+            className="w-full"
+            style={{ width: '100%' }}
+            onClick={async () => {
+              window.location.reload();
+            }}
+          >
+            Cek Ulang Status Akses
+          </Button>
+          <Button
+            variant="outline"
+            className="w-full"
+            style={{ width: '100%' }}
+            icon={LogOut}
+            onClick={logout}
+          >
+            Keluar &amp; Gunakan Akun Lain
+          </Button>
+        </div>
       </div>
     </div>
   );

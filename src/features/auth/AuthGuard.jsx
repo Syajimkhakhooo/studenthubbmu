@@ -29,11 +29,12 @@ export function AuthGuard({ children, allowedRoles }) {
     return <Navigate to="/access-denied" replace />;
   }
 
-  if (!user || !profile) {
+  // Only redirect to login if there is no authenticated user
+  if (!user) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  if (allowedRoles && allowedRoles.length > 0 && !allowedRoles.includes(profile.role)) {
+  if (allowedRoles && allowedRoles.length > 0 && profile?.role && !allowedRoles.includes(profile.role)) {
     return (
       <div style={{ padding: '40px', textAlign: 'center' }}>
         <h3 style={{ color: 'var(--status-danger-text)' }}>Akses Terbatas</h3>

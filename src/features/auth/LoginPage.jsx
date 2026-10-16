@@ -40,11 +40,11 @@ export function LoginPage() {
 
   // If already authenticated and active, redirect to destination
   React.useEffect(() => {
-    if (user && profile && !accessDenied) {
+    if (user && !accessDenied) {
       const from = location.state?.from?.pathname || '/dashboard';
       navigate(from, { replace: true });
     }
-  }, [user, profile, accessDenied, navigate, location]);
+  }, [user, accessDenied, navigate, location]);
 
   async function handleGoogleLogin() {
     if (!isSupabaseConfigured) {
@@ -155,23 +155,17 @@ export function LoginPage() {
         >
           {/* Header & Logo */}
           <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-            <div
+            <img
+              src="/logo.png"
+              alt="Logo LPK BMU"
               style={{
-                width: '44px',
-                height: '44px',
-                borderRadius: '10px',
-                backgroundColor: 'var(--text-primary)',
-                color: 'var(--text-inverse)',
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontWeight: '700',
-                fontSize: '1.125rem',
-                marginBottom: '14px',
+                width: '56px',
+                height: '56px',
+                objectFit: 'contain',
+                marginBottom: '12px',
+                display: 'inline-block',
               }}
-            >
-              BMU
-            </div>
+            />
             <h1 style={{ fontSize: '1.25rem', fontWeight: '700', letterSpacing: '-0.02em' }}>
               Student Hub BMU
             </h1>

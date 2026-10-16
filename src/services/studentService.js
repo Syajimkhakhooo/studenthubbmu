@@ -15,6 +15,7 @@ export const studentService = {
     sortBy = 'created_at',
     sortAsc = false,
     includeArchived = false,
+    onlyArchived = false,
   } = {}) {
     if (!isSupabaseConfigured) {
       return { data: [], total: 0, page, pageSize };
@@ -42,8 +43,10 @@ export const studentService = {
           )
         `, { count: 'exact' });
 
-      // Archive filter
-      if (!includeArchived) {
+      // Archive / Trash filter
+      if (onlyArchived) {
+        query = query.eq('is_archived', true);
+      } else if (!includeArchived) {
         query = query.eq('is_archived', false);
       }
 
@@ -147,6 +150,73 @@ export const studentService = {
   },
 
   /**
+   * Clean and sanitize student payload for PostgreSQL numeric and date types
+   */
+  sanitizeStudentPayload(data) {
+    const payload = { ...data };
+
+    // Numeric fields: empty string or NaN -> null
+    if (payload.height_cm === '' || payload.height_cm === undefined || payload.height_cm === null) {
+      payload.height_cm = null;
+    } else {
+      const parsed = parseFloat(payload.height_cm);
+      payload.height_cm = Number.isNaN(parsed) ? null : parsed;
+    }
+
+    if (payload.weight_kg === '' || payload.weight_kg === undefined || payload.weight_kg === null) {
+      payload.weight_kg = null;
+    } else {
+      const parsed = parseFloat(payload.weight_kg);
+      payload.weight_kg = Number.isNaN(parsed) ? null : parsed;
+    }
+
+    // Date fields: empty string -> null
+    if (!payload.birth_date || payload.birth_date === '') {
+      payload.birth_date = null;
+    }
+    if (!payload.entry_date || payload.entry_date === '') {
+      payload.entry_date = new Date().toISOString().split('T')[0];
+    }
+
+    // Text fields: empty string -> null
+    [
+      'nickname',
+      'birth_place',
+      'religion',
+      'blood_type',
+      'domicile_address',
+      'id_card_address',
+      'phone_number',
+      'email',
+      'emergency_contact_name',
+      'emergency_contact_relation',
+      'emergency_contact_phone',
+      'target_job_interest',
+      'eye_vision_status',
+      'driving_license_type',
+      'marital_status',
+      'notes',
+    ].forEach((key) => {
+      if (payload[key] === '') {
+        payload[key] = null;
+      }
+    });
+
+    // Strip relational properties
+    delete payload.student_journey;
+    delete payload.education_histories;
+    delete payload.work_experiences;
+    delete payload.family_members;
+    delete payload.certifications;
+    delete payload.student_documents;
+    delete payload.student_preferences;
+    delete payload.student_finances;
+    delete payload.student_status_history;
+
+    return payload;
+  },
+
+  /**
    * Create new student with basic journey record
    */
   async createStudent(studentData, actorProfile) {
@@ -159,8 +229,9 @@ export const studentService = {
     }
 
     try {
+      const sanitized = this.sanitizeStudentPayload(studentData);
       const payload = {
-        ...studentData,
+        ...sanitized,
         created_by: actorProfile?.id || null,
         updated_by: actorProfile?.id || null,
       };
@@ -196,8 +267,9 @@ export const studentService = {
     if (!isSupabaseConfigured) throw new Error('Supabase belum terhubung.');
 
     try {
+      const sanitized = this.sanitizeStudentPayload(updateData);
       const payload = {
-        ...updateData,
+        ...sanitized,
         updated_by: actorProfile?.id || null,
         updated_at: new Date().toISOString(),
       };
@@ -253,6 +325,68 @@ export const studentService = {
       return data;
     } catch (err) {
       console.error('Error toggling student archive:', err);
+      throw err;
+    }
+  },
+
+  /**
+   * Get total number of students in trash bin
+   */
+  async getTrashCount() {
+    if (!isSupabaseConfigured) return 0;
+    try {
+      const { count, error } = await supabase
+        .from('students')
+        .select('*', { count: 'exact', head: true })
+        .eq('is_archived', true);
+      if (error) throw error;
+      return count || 0;
+    } catch {
+      return 0;
+    }
+  },
+
+  /**
+   * Restore a student from trash bin to active students
+   */
+  async restoreStudent(id, actorProfile) {
+    return this.setStudentArchive(id, false, actorProfile);
+  },
+
+  /**
+   * Permanently delete a student and all related relational data
+   */
+  async deleteStudentPermanently(id, actorProfile) {
+    if (!isSupabaseConfigured) throw new Error('Supabase belum terhubung.');
+
+    try {
+      // 1. Fetch student info first for audit trail
+      const { data: studentInfo } = await supabase
+        .from('students')
+        .select('full_name, student_id_number')
+        .eq('id', id)
+        .maybeSingle();
+
+      // 2. Perform hard delete (foreign keys cascade automatically)
+      const { error } = await supabase
+        .from('students')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+
+      // 3. Log permanent deletion
+      await this.logAudit({
+        actorProfile,
+        action: 'PERMANENT_DELETE',
+        entityType: 'student',
+        entityId: id,
+        summary: `Menghapus permanen siswa: ${studentInfo?.full_name || id} (${studentInfo?.student_id_number || '-'})`,
+      });
+
+      return true;
+    } catch (err) {
+      console.error('Error permanently deleting student:', err);
       throw err;
     }
   },

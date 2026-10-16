@@ -275,6 +275,7 @@ CREATE OR REPLACE FUNCTION public.handle_new_auth_user()
 RETURNS TRIGGER AS $$
 DECLARE
     matched_allowlist RECORD;
+    admin_count INT;
 BEGIN
     -- Check if user email is in internal allowlist
     SELECT * INTO matched_allowlist FROM public.internal_allowlist WHERE LOWER(email) = LOWER(NEW.email);
@@ -294,16 +295,33 @@ BEGIN
             is_active = true,
             updated_at = timezone('utc'::text, now());
     ELSE
-        -- Insert with inactive status if not in allowlist
-        INSERT INTO public.profiles (id, email, full_name, role, is_active)
-        VALUES (
-            NEW.id,
-            NEW.email,
-            COALESCE(NEW.raw_user_meta_data->>'full_name', NEW.raw_user_meta_data->>'name', split_part(NEW.email, '@', 1)),
-            'sensei_staff',
-            false -- not allowed until approved by admin
-        )
-        ON CONFLICT (id) DO NOTHING;
+        -- Check if there are any active admins yet
+        SELECT COUNT(*) INTO admin_count FROM public.profiles WHERE role = 'admin' AND is_active = true;
+
+        IF admin_count = 0 THEN
+            -- First user to login automatically becomes the system Administrator
+            INSERT INTO public.profiles (id, email, full_name, role, is_active)
+            VALUES (
+                NEW.id,
+                NEW.email,
+                COALESCE(NEW.raw_user_meta_data->>'full_name', NEW.raw_user_meta_data->>'name', split_part(NEW.email, '@', 1)),
+                'admin',
+                true
+            )
+            ON CONFLICT (id) DO UPDATE
+            SET role = 'admin', is_active = true;
+        ELSE
+            -- Insert with inactive status if not in allowlist
+            INSERT INTO public.profiles (id, email, full_name, role, is_active)
+            VALUES (
+                NEW.id,
+                NEW.email,
+                COALESCE(NEW.raw_user_meta_data->>'full_name', NEW.raw_user_meta_data->>'name', split_part(NEW.email, '@', 1)),
+                'sensei_staff',
+                false -- not allowed until approved by admin
+            )
+            ON CONFLICT (id) DO NOTHING;
+        END IF;
     END IF;
     
     RETURN NEW;
@@ -401,7 +419,13 @@ DROP POLICY IF EXISTS "Active users can view profiles" ON public.profiles;
 CREATE POLICY "Active users can view profiles"
 ON public.profiles FOR SELECT
 TO authenticated
-USING (public.is_active_staff());
+USING (id = auth.uid() OR public.is_active_staff());
+
+DROP POLICY IF EXISTS "Users can insert own profile" ON public.profiles;
+CREATE POLICY "Users can insert own profile"
+ON public.profiles FOR INSERT
+TO authenticated
+WITH CHECK (id = auth.uid());
 
 DROP POLICY IF EXISTS "Users can update own profile" ON public.profiles;
 CREATE POLICY "Users can update own profile"

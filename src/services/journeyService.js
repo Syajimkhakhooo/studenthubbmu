@@ -17,11 +17,15 @@ export const journeyService = {
 
     try {
       // 1. Update student_journey table
+      const sanitizedExtra = { ...extraFields };
+      if (sanitizedExtra.target_departure_date === '') sanitizedExtra.target_departure_date = null;
+      if (sanitizedExtra.actual_departure_date === '') sanitizedExtra.actual_departure_date = null;
+
       const updatePayload = {
         [dimension]: newValue,
         updated_by: actorProfile?.id || null,
         updated_at: new Date().toISOString(),
-        ...extraFields,
+        ...sanitizedExtra,
       };
 
       const { data, error } = await supabase

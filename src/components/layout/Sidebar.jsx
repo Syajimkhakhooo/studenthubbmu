@@ -61,30 +61,24 @@ export function Sidebar({ isCollapsed, onToggleCollapse, isMobile, onCloseMobile
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <div
+          <img
+            src="/logo.png"
+            alt="Logo LPK BMU"
             style={{
               width: '32px',
               height: '32px',
-              borderRadius: '8px',
-              backgroundColor: 'var(--accent-primary)',
-              color: 'var(--accent-text)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontWeight: 700,
-              fontSize: '0.875rem',
+              borderRadius: '6px',
+              objectFit: 'contain',
               flexShrink: 0,
             }}
-          >
-            BMU
-          </div>
+          />
           {!isCollapsed && (
             <div style={{ overflow: 'hidden' }}>
               <div style={{ fontWeight: 600, fontSize: '0.9375rem', lineHeight: 1.2 }}>
                 Student Hub
               </div>
               <div style={{ fontSize: '0.6875rem', color: 'var(--text-tertiary)' }}>
-                LPK Mitra Unggulan
+                LPK Bahtera Mitra Unggulan
               </div>
             </div>
           )}
