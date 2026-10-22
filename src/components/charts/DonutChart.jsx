@@ -38,10 +38,41 @@ export function DonutChart({
   const slices = useMemo(() => {
     if (total <= 0) return [];
 
-    let accumulatedOffset = 0;
     const itemsWithValues = data.filter((d) => (Number(d.value) || 0) > 0);
     const hasMultiple = itemsWithValues.length > 1;
-    const gap = hasMultiple ? 2.5 : 0; // px gap between slices
+    const gap = hasMultiple ? 3.5 : 0; // px gap between slices
+
+    // Ensure non-zero items have a minimum visual arc (at least 26px) so small slices (e.g. 1%) are clearly visible and distinguishable
+    const minVisualArc = hasMultiple ? 28 : 0;
+
+    const rawArcs = data.map((item) => {
+      const val = Number(item.value) || 0;
+      if (val <= 0) return 0;
+      return (val / total) * circumference;
+    });
+
+    let totalSmallDeficit = 0;
+    let largeArcSum = 0;
+    rawArcs.forEach((arc) => {
+      if (arc > 0 && arc < minVisualArc) {
+        totalSmallDeficit += (minVisualArc - arc);
+      } else if (arc >= minVisualArc) {
+        largeArcSum += arc;
+      }
+    });
+
+    // Rebalance arcs proportionally so the sum of visual arcs equals exactly circumference
+    const visualArcs = rawArcs.map((arc) => {
+      if (arc <= 0) return 0;
+      if (arc < minVisualArc) return minVisualArc;
+      if (largeArcSum > 0 && totalSmallDeficit > 0) {
+        const shrinkFactor = (largeArcSum - totalSmallDeficit) / largeArcSum;
+        return arc * shrinkFactor;
+      }
+      return arc;
+    });
+
+    let accumulatedOffset = 0;
 
     return data.map((item, idx) => {
       const val = Number(item.value) || 0;
@@ -49,15 +80,16 @@ export function DonutChart({
         return {
           ...item,
           idx,
-          percentage: 0,
+          percentage: '0.0',
           dashArray: '0 9999',
           dashOffset: 0,
           isEmpty: true,
+          hasMultiple,
         };
       }
 
       const fraction = val / total;
-      const arcLength = fraction * circumference;
+      const arcLength = visualArcs[idx];
       const effectiveLength = Math.max(0, arcLength - gap);
       const dashArray = `${effectiveLength} ${circumference - effectiveLength}`;
       const dashOffset = -accumulatedOffset;
@@ -71,6 +103,7 @@ export function DonutChart({
         dashArray,
         dashOffset,
         isEmpty: false,
+        hasMultiple,
       };
     });
   }, [data, total, circumference]);
@@ -141,7 +174,7 @@ export function DonutChart({
                   strokeWidth={isHovered ? thickness + 4 : thickness}
                   strokeDasharray={slice.dashArray}
                   strokeDashoffset={slice.dashOffset}
-                  strokeLinecap="round"
+                  strokeLinecap={slice.hasMultiple ? 'butt' : 'round'}
                   opacity={isDimmed ? 0.35 : 1}
                   style={{
                     cursor: onSliceClick ? 'pointer' : 'default',
