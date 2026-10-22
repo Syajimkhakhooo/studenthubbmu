@@ -76,7 +76,7 @@ CREATE TABLE IF NOT EXISTS public.student_journey (
     leave_status TEXT NOT NULL DEFAULT 'normal' CHECK (leave_status IN ('normal', 'cuti', 'dicutikan')),
     interview_readiness TEXT NOT NULL DEFAULT 'belum_siap' CHECK (interview_readiness IN ('belum_siap', 'siap')),
     job_selection_status TEXT NOT NULL DEFAULT 'belum_mengikuti' CHECK (job_selection_status IN ('belum_mengikuti', 'proses', 'lolos', 'tidak_lolos', 'mengundurkan_diri')),
-    departure_readiness TEXT NOT NULL DEFAULT 'belum_siap' CHECK (departure_readiness IN ('belum_siap', 'siap')),
+    departure_readiness TEXT NOT NULL DEFAULT 'belum_siap' CHECK (departure_readiness IN ('belum_siap', 'menunggu_kontrak', 'menunggu_coe', 'siap')),
     departure_status TEXT NOT NULL DEFAULT 'belum_berangkat' CHECK (departure_status IN ('belum_berangkat', 'sudah_berangkat')),
     matched_company_name TEXT,
     matched_job_sector TEXT,

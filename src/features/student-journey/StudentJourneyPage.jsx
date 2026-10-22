@@ -67,6 +67,8 @@ export function StudentJourneyPage() {
     { id: 'belajar', label: 'Sedang Belajar', count: overview?.learning?.sedang_belajar || 0 },
     { id: 'siap_interview', label: 'Siap Interview', count: overview?.interview?.siap || 0 },
     { id: 'lolos_seleksi', label: 'Lolos Seleksi Kerja', count: overview?.jobSelection?.lolos || 0 },
+    { id: 'menunggu_kontrak', label: 'Menunggu Kontrak', count: overview?.departureReadiness?.menunggu_kontrak || 0 },
+    { id: 'menunggu_coe', label: 'Menunggu COE', count: overview?.departureReadiness?.menunggu_coe || 0 },
     { id: 'siap_berangkat', label: 'Siap Berangkat', count: overview?.departure?.belum_berangkat || 0 },
     { id: 'sudah_berangkat', label: 'Sudah di Jepang', count: overview?.departure?.sudah_berangkat || 0 },
     { id: 'cuti', label: 'Izin Cuti / Nonaktif', count: (overview?.leave?.cuti || 0) + (overview?.leave?.dicutikan || 0) },
@@ -88,6 +90,12 @@ export function StudentJourneyPage() {
     }
     if (selectedPipelineStage === 'lolos_seleksi') {
       return j?.job_selection_status === 'lolos';
+    }
+    if (selectedPipelineStage === 'menunggu_kontrak') {
+      return j?.departure_readiness === 'menunggu_kontrak';
+    }
+    if (selectedPipelineStage === 'menunggu_coe') {
+      return j?.departure_readiness === 'menunggu_coe';
     }
     if (selectedPipelineStage === 'siap_berangkat') {
       return j?.departure_readiness === 'siap' && j?.departure_status !== 'sudah_berangkat';

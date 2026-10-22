@@ -107,6 +107,7 @@ export const journeyService = {
         learning: { baru: 0, sedang_belajar: 0, lulus: 0, berhenti: 0 },
         interview: { belum_siap: 0, siap: 0 },
         jobSelection: { belum_mengikuti: 0, proses: 0, lolos: 0, tidak_lolos: 0, mengundurkan_diri: 0 },
+        departureReadiness: { belum_siap: 0, menunggu_kontrak: 0, menunggu_coe: 0, siap: 0 },
         departure: { belum_berangkat: 0, sudah_berangkat: 0 },
         leave: { normal: 0, cuti: 0, dicutikan: 0 },
         total: 0,
@@ -116,7 +117,7 @@ export const journeyService = {
     try {
       const { data, error } = await supabase
         .from('student_journey')
-        .select('learning_status, leave_status, interview_readiness, job_selection_status, departure_status');
+        .select('learning_status, leave_status, interview_readiness, job_selection_status, departure_status, departure_readiness');
 
       if (error) throw error;
 
@@ -124,6 +125,7 @@ export const journeyService = {
         learning: { baru: 0, sedang_belajar: 0, lulus: 0, berhenti: 0 },
         interview: { belum_siap: 0, siap: 0 },
         jobSelection: { belum_mengikuti: 0, proses: 0, lolos: 0, tidak_lolos: 0, mengundurkan_diri: 0 },
+        departureReadiness: { belum_siap: 0, menunggu_kontrak: 0, menunggu_coe: 0, siap: 0 },
         departure: { belum_berangkat: 0, sudah_berangkat: 0 },
         leave: { normal: 0, cuti: 0, dicutikan: 0 },
         total: data ? data.length : 0,
@@ -133,6 +135,7 @@ export const journeyService = {
         if (summary.learning[row.learning_status] !== undefined) summary.learning[row.learning_status]++;
         if (summary.interview[row.interview_readiness] !== undefined) summary.interview[row.interview_readiness]++;
         if (summary.jobSelection[row.job_selection_status] !== undefined) summary.jobSelection[row.job_selection_status]++;
+        if (summary.departureReadiness[row.departure_readiness] !== undefined) summary.departureReadiness[row.departure_readiness]++;
         if (summary.departure[row.departure_status] !== undefined) summary.departure[row.departure_status]++;
         if (summary.leave[row.leave_status] !== undefined) summary.leave[row.leave_status]++;
       });

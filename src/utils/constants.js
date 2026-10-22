@@ -13,8 +13,8 @@ export const ROLE_LABELS = {
 };
 
 export const PROGRAM_TYPES = [
-  { value: 'SSW', label: 'SSW (Specified Skilled Worker / Tokutei Ginou)' },
-  { value: 'TG_INTERNSHIP', label: 'TG / Magang (Technical Intern Trainee)' },
+  { value: 'SSW', label: 'Tokutei Ginou (Specified Skilled Worker)' },
+  { value: 'TG_INTERNSHIP', label: 'Magang / Ikushei Shuro (Technical Intern)' },
   { value: 'OTHER', label: 'Program Lainnya' },
 ];
 
@@ -46,6 +46,7 @@ export const JOB_SELECTION_STATUSES = [
 
 export const DEPARTURE_READINESS = [
   { value: 'belum_siap', label: 'Pemberkasan Belum Lengkap', badge: 'neutral' },
+  { value: 'menunggu_kontrak', label: 'Menunggu Kontrak', badge: 'info' },
   { value: 'menunggu_coe', label: 'Sedang Menunggu COE', badge: 'warning' },
   { value: 'siap', label: 'Siap Berangkat (COE/Visa Siap)', badge: 'success' },
 ];
@@ -91,6 +92,7 @@ export const CERTIFICATION_TYPES = [
 export const JOB_INTEREST_FIELDS = [
   'Pengolahan Makanan (Food Processing)',
   'Pertanian (Agriculture)',
+  'Perikanan (Tangkap/Budidaya)',
   'Perhotelan (Accommodation/Hospitality)',
   'Perawat Lansia (Kaigo / Caregiver)',
   'Restoran (Food Service)',
@@ -98,5 +100,7 @@ export const JOB_INTEREST_FIELDS = [
   'Pembersihan Gedung (Building Cleaning)',
   'Manufaktur Industri (Manufacturing)',
   'Otomotif & Reparasi',
+  'Perawatan Sepeda Motor (Jidosha Seibi)',
+  'Pengelasan (Welding)',
   'Lainnya',
 ];

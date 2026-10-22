@@ -204,6 +204,21 @@
   background-color: currentColor;
 }
 
+@keyframes pulse-dot {
+  0% { transform: scale(0.95); opacity: 0.75; }
+  50% { transform: scale(1.25); opacity: 1; box-shadow: 0 0 10px #10b981; }
+  100% { transform: scale(0.95); opacity: 0.75; }
+}
+
+.realtime-live-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #10b981;
+  display: inline-block;
+  animation: pulse-dot 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
 .badge-neutral {
   background-color: var(--status-neutral-bg);
   border-color: var(--status-neutral-border);
