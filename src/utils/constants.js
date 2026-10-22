@@ -46,6 +46,7 @@ export const JOB_SELECTION_STATUSES = [
 
 export const DEPARTURE_READINESS = [
   { value: 'belum_siap', label: 'Pemberkasan Belum Lengkap', badge: 'neutral' },
+  { value: 'menunggu_coe', label: 'Sedang Menunggu COE', badge: 'warning' },
   { value: 'siap', label: 'Siap Berangkat (COE/Visa Siap)', badge: 'success' },
 ];
 
