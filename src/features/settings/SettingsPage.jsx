@@ -15,6 +15,7 @@ import { TableSkeleton } from '../../components/feedback/LoadingSkeleton';
 import { ConfirmModal } from '../../components/feedback/ConfirmModal';
 import { ROLE_LABELS } from '../../utils/constants';
 import { formatDateTime } from '../../utils/formatters';
+import { useTheme } from '../../hooks/useTheme';
 import {
   Users,
   ShieldCheck,
@@ -27,13 +28,18 @@ import {
   AlertTriangle,
   History,
   Key,
+  Palette,
+  Sun,
+  Moon,
+  Check,
 } from 'lucide-react';
 
 export function SettingsPage() {
   const { profile, isAdmin, isPrincipal } = useAuth();
+  const { theme, setTheme, isDark } = useTheme();
   const { success, error: toastError } = useToast();
 
-  const [activeTab, setActiveTab] = useState('allowlist');
+  const [activeTab, setActiveTab] = useState('appearance');
   const [loading, setLoading] = useState(true);
 
   // Allowlist state
@@ -156,6 +162,7 @@ export function SettingsPage() {
   };
 
   const tabsConfig = [
+    { id: 'appearance', label: 'Tema & Tampilan', icon: Palette },
     { id: 'allowlist', label: 'Allowlist Email Internal', icon: Key, count: allowlist.length },
     { id: 'users', label: 'Pengguna Terdaftar & Peran', icon: Users, count: profiles.length },
     { id: 'diagnostics', label: 'Koneksi & Status Sistem', icon: Activity },
@@ -176,6 +183,173 @@ export function SettingsPage() {
       <div style={{ backgroundColor: 'var(--bg-surface)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-subtle)' }}>
         <Tabs tabs={tabsConfig} activeTab={activeTab} onChange={setActiveTab} />
       </div>
+
+      {/* TAB 0: Appearance / Theme */}
+      {activeTab === 'appearance' && (
+        <Card>
+          <CardHeader
+            title="Preferensi Tema & Tampilan Antarmuka"
+            subtitle="Pilih tema tampilan yang paling nyaman untuk operasional harian Anda di LPK BMU"
+          />
+          <CardBody>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
+              {/* Option 1: Tema Gelap (Dark Mode) */}
+              <div
+                onClick={() => setTheme('dark')}
+                style={{
+                  border: isDark ? '2px solid var(--text-primary)' : '1px solid var(--border-default)',
+                  borderRadius: 'var(--radius-xl)',
+                  padding: '20px',
+                  backgroundColor: isDark ? 'var(--bg-surface-elevated)' : 'var(--bg-surface)',
+                  cursor: 'pointer',
+                  position: 'relative',
+                  transition: 'all var(--transition-fast)',
+                  boxShadow: isDark ? 'var(--shadow-md)' : 'none',
+                }}
+              >
+                {isDark && (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      top: '16px',
+                      right: '16px',
+                      width: '24px',
+                      height: '24px',
+                      borderRadius: '50%',
+                      backgroundColor: 'var(--accent-primary)',
+                      color: 'var(--accent-text)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <Check size={14} />
+                  </div>
+                )}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
+                  <div
+                    style={{
+                      width: '36px',
+                      height: '36px',
+                      borderRadius: 'var(--radius-md)',
+                      backgroundColor: '#15181c',
+                      color: '#e3b341',
+                      border: '1px solid #2d333b',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <Moon size={18} />
+                  </div>
+                  <div>
+                    <h4 style={{ fontSize: '0.9375rem', fontWeight: 600 }}>Tema Gelap (Dark Mode)</h4>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>Hitam pekat / Startup SaaS</span>
+                  </div>
+                </div>
+
+                <p style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: '16px' }}>
+                  Nuansa karbon gelap elegan, mengurangi ketegangan mata saat bekerja di ruangan redup atau malam hari.
+                </p>
+
+                {/* Visual miniature preview */}
+                <div
+                  style={{
+                    backgroundColor: '#0b0c0e',
+                    border: '1px solid #21262d',
+                    borderRadius: 'var(--radius-md)',
+                    padding: '12px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '6px',
+                  }}
+                >
+                  <div style={{ height: '8px', width: '40%', backgroundColor: '#2d333b', borderRadius: '4px' }} />
+                  <div style={{ height: '18px', width: '100%', backgroundColor: '#121417', borderRadius: '4px', border: '1px solid #21262d' }} />
+                  <div style={{ height: '18px', width: '100%', backgroundColor: '#121417', borderRadius: '4px', border: '1px solid #21262d' }} />
+                </div>
+              </div>
+
+              {/* Option 2: Tema Terang (Light Mode) */}
+              <div
+                onClick={() => setTheme('light')}
+                style={{
+                  border: !isDark ? '2px solid var(--text-primary)' : '1px solid var(--border-default)',
+                  borderRadius: 'var(--radius-xl)',
+                  padding: '20px',
+                  backgroundColor: !isDark ? 'var(--bg-surface-elevated)' : 'var(--bg-surface)',
+                  cursor: 'pointer',
+                  position: 'relative',
+                  transition: 'all var(--transition-fast)',
+                  boxShadow: !isDark ? 'var(--shadow-md)' : 'none',
+                }}
+              >
+                {!isDark && (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      top: '16px',
+                      right: '16px',
+                      width: '24px',
+                      height: '24px',
+                      borderRadius: '50%',
+                      backgroundColor: 'var(--accent-primary)',
+                      color: 'var(--accent-text)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <Check size={14} />
+                  </div>
+                )}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
+                  <div
+                    style={{
+                      width: '36px',
+                      height: '36px',
+                      borderRadius: 'var(--radius-md)',
+                      backgroundColor: '#f8fafc',
+                      color: '#d97706',
+                      border: '1px solid #e2e8f0',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <Sun size={18} />
+                  </div>
+                  <div>
+                    <h4 style={{ fontSize: '0.9375rem', fontWeight: 600 }}>Tema Terang (Light Mode)</h4>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>Putih bersih / Kontras tinggi</span>
+                  </div>
+                </div>
+
+                <p style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: '16px' }}>
+                  Latar belakang putih bersih dan terang, memudahkan pencetakan dan keterbacaan data di siang hari.
+                </p>
+
+                {/* Visual miniature preview */}
+                <div
+                  style={{
+                    backgroundColor: '#f4f6f8',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: 'var(--radius-md)',
+                    padding: '12px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '6px',
+                  }}
+                >
+                  <div style={{ height: '8px', width: '40%', backgroundColor: '#cbd5e1', borderRadius: '4px' }} />
+                  <div style={{ height: '18px', width: '100%', backgroundColor: '#ffffff', borderRadius: '4px', border: '1px solid #e2e8f0' }} />
+                  <div style={{ height: '18px', width: '100%', backgroundColor: '#ffffff', borderRadius: '4px', border: '1px solid #e2e8f0' }} />
+                </div>
+              </div>
+            </div>
+          </CardBody>
+        </Card>
+      )}
 
       {/* TAB 1: Allowlist */}
       {activeTab === 'allowlist' && (

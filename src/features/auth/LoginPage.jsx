@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
+import { useTheme } from '../../hooks/useTheme';
 import { useToast } from '../../hooks/useToast';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { SupabaseConfigAlert } from '../../components/feedback/SupabaseConfigAlert';
 import { CookiePolicyModal } from './CookiePolicyModal';
-import { Lock, Mail, User, Info, UserPlus, LogIn } from 'lucide-react';
+import { Lock, Mail, User, Info, UserPlus, LogIn, Sun, Moon } from 'lucide-react';
 
 export function LoginPage() {
   const {
@@ -19,6 +20,7 @@ export function LoginPage() {
     profile,
     accessDenied,
   } = useAuth();
+  const { isDark, toggleTheme } = useTheme();
   const { error: toastError, success: toastSuccess, info: toastInfo } = useToast();
   const navigate = useNavigate();
   const location = useLocation();
@@ -138,8 +140,45 @@ export function LoginPage() {
         justifyContent: 'center',
         alignItems: 'center',
         padding: '24px 16px',
+        position: 'relative',
       }}
     >
+      {/* Floating Theme Switcher */}
+      <div style={{ position: 'absolute', top: '20px', right: '20px' }}>
+        <button
+          type="button"
+          onClick={toggleTheme}
+          title={isDark ? 'Beralih ke Tema Terang (Putih)' : 'Beralih ke Tema Gelap (Hitam)'}
+          style={{
+            color: 'var(--text-secondary)',
+            padding: '8px 12px',
+            borderRadius: 'var(--radius-full)',
+            border: '1px solid var(--border-default)',
+            backgroundColor: 'var(--bg-surface)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            fontSize: '0.8125rem',
+            fontWeight: 500,
+            cursor: 'pointer',
+            boxShadow: 'var(--shadow-sm)',
+            transition: 'all var(--transition-fast)',
+          }}
+        >
+          {isDark ? (
+            <>
+              <Sun size={15} style={{ color: '#e3b341' }} />
+              <span>Tema Terang</span>
+            </>
+          ) : (
+            <>
+              <Moon size={15} style={{ color: '#4f46e5' }} />
+              <span>Tema Gelap</span>
+            </>
+          )}
+        </button>
+      </div>
+
       <div style={{ width: '100%', maxWidth: '440px' }}>
         {/* Supabase status warning if not yet configured */}
         {!isSupabaseConfigured && <SupabaseConfigAlert />}

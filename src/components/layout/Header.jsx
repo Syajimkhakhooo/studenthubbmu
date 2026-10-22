@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../hooks/useAuth';
+import { useTheme } from '../../hooks/useTheme';
 import { ROLE_LABELS } from '../../utils/constants';
 import { CookiePolicyModal } from '../../features/auth/CookiePolicyModal';
 import { ConfirmModal } from '../feedback/ConfirmModal';
-import { Menu, LogOut, Shield, Database, Info } from 'lucide-react';
+import { Menu, LogOut, Shield, Database, Info, Sun, Moon } from 'lucide-react';
 
 export function Header({ onOpenMobileNav, pageTitle }) {
   const { profile, user, logout, isSupabaseConfigured } = useAuth();
+  const { isDark, toggleTheme } = useTheme();
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [showCookieModal, setShowCookieModal] = useState(false);
 
@@ -89,6 +91,32 @@ export function Header({ onOpenMobileNav, pageTitle }) {
           }}
         >
           <Info size={17} />
+        </button>
+
+        {/* Theme Toggle Button (Dark/Light) */}
+        <button
+          type="button"
+          onClick={toggleTheme}
+          title={isDark ? 'Beralih ke Tema Terang (Putih)' : 'Beralih ke Tema Gelap (Hitam)'}
+          style={{
+            color: 'var(--text-secondary)',
+            padding: '6px',
+            borderRadius: 'var(--radius-md)',
+            border: '1px solid var(--border-subtle)',
+            backgroundColor: 'var(--bg-surface-elevated)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            transition: 'all var(--transition-fast)',
+          }}
+          aria-label={isDark ? 'Ganti ke Tema Terang' : 'Ganti ke Tema Gelap'}
+        >
+          {isDark ? (
+            <Sun size={17} style={{ color: '#e3b341' }} />
+          ) : (
+            <Moon size={17} style={{ color: '#4f46e5' }} />
+          )}
         </button>
 
         {/* User Role & Name */}

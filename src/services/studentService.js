@@ -150,6 +150,32 @@ export const studentService = {
   },
 
   /**
+   * Batch check existing student ID numbers
+   * @param {string[]} idNumbers 
+   * @returns {Promise<string[]>} List of ID numbers that already exist
+   */
+  async checkStudentIdsExist(idNumbers = []) {
+    if (!isSupabaseConfigured || !Array.isArray(idNumbers) || idNumbers.length === 0) {
+      return [];
+    }
+    try {
+      const cleanList = idNumbers.filter(Boolean).map(id => String(id).trim());
+      if (cleanList.length === 0) return [];
+
+      const { data, error } = await supabase
+        .from('students')
+        .select('student_id_number')
+        .in('student_id_number', cleanList);
+
+      if (error) throw error;
+      return (data || []).map(row => row.student_id_number);
+    } catch (err) {
+      console.warn('Batch check ID error:', err);
+      return [];
+    }
+  },
+
+  /**
    * Clean and sanitize student payload for PostgreSQL numeric and date types
    */
   sanitizeStudentPayload(data) {
@@ -256,6 +282,63 @@ export const studentService = {
       return data;
     } catch (err) {
       console.error('Error creating student:', err);
+      throw err;
+    }
+  },
+
+  /**
+   * Bulk insert students from parsed Excel/CSV rows
+   * @param {Array} studentsList Array of student objects
+   * @param {Object} actorProfile Currently authenticated user profile
+   * @returns {Promise<{inserted: Array, count: number}>}
+   */
+  async bulkCreateStudents(studentsList, actorProfile) {
+    if (!isSupabaseConfigured) throw new Error('Supabase belum terhubung.');
+    if (!Array.isArray(studentsList) || studentsList.length === 0) {
+      throw new Error('Tidak ada data siswa untuk diimpor.');
+    }
+
+    try {
+      // 1. Sanitize all student payloads
+      const payloads = studentsList.map((item) => {
+        const sanitized = this.sanitizeStudentPayload(item);
+        return {
+          ...sanitized,
+          created_by: actorProfile?.id || null,
+          updated_by: actorProfile?.id || null,
+        };
+      });
+
+      // 2. Insert into Supabase in chunks of 50 to avoid HTTP limits
+      const chunkSize = 50;
+      const allInserted = [];
+
+      for (let i = 0; i < payloads.length; i += chunkSize) {
+        const chunk = payloads.slice(i, i + chunkSize);
+        const { data, error } = await supabase
+          .from('students')
+          .insert(chunk)
+          .select();
+
+        if (error) throw error;
+        if (data) allInserted.push(...data);
+      }
+
+      // 3. Log audit event
+      await this.logAudit({
+        actorProfile,
+        action: 'BULK_IMPORT',
+        entityType: 'student',
+        entityId: allInserted[0]?.id || null,
+        summary: `Mengimpor ${allInserted.length} siswa baru secara bulk melalui file Excel/CSV`,
+      });
+
+      return {
+        inserted: allInserted,
+        count: allInserted.length,
+      };
+    } catch (err) {
+      console.error('Error in bulkCreateStudents:', err);
       throw err;
     }
   },

@@ -13,6 +13,7 @@ import { TableSkeleton } from '../../components/feedback/LoadingSkeleton';
 import { EmptyState } from '../../components/feedback/EmptyState';
 import { ConfirmModal } from '../../components/feedback/ConfirmModal';
 import { StudentFormModal } from './StudentFormModal';
+import { StudentImportModal } from './StudentImportModal';
 import {
   formatDate,
   calculateAge,
@@ -35,6 +36,7 @@ import {
   ChevronRight,
   RotateCcw,
   Users,
+  FileSpreadsheet,
 } from 'lucide-react';
 
 export function StudentListPage() {
@@ -69,6 +71,7 @@ export function StudentListPage() {
 
   // Modals state
   const [showAddModal, setShowAddModal] = useState(searchParams.get('action') === 'add');
+  const [showImportModal, setShowImportModal] = useState(false);
   const [editingStudent, setEditingStudent] = useState(null);
   const [archiveTarget, setArchiveTarget] = useState(null);
   const [restoreTarget, setRestoreTarget] = useState(null);
@@ -443,6 +446,14 @@ export function StudentListPage() {
           <Button variant="secondary" icon={Filter} onClick={() => navigate('/reports')}>
             Data Explorer
           </Button>
+          <Button
+            variant="secondary"
+            icon={FileSpreadsheet}
+            onClick={() => setShowImportModal(true)}
+            title="Import banyak data siswa sekaligus dari file Excel atau CSV"
+          >
+            Import Excel
+          </Button>
           <Button variant="primary" icon={UserPlus} onClick={() => setShowAddModal(true)}>
             Tambah Siswa Baru
           </Button>
@@ -702,6 +713,13 @@ export function StudentListPage() {
           onSuccess={fetchStudents}
         />
       )}
+
+      {/* Bulk Excel Import Modal */}
+      <StudentImportModal
+        isOpen={showImportModal}
+        onClose={() => setShowImportModal(false)}
+        onSuccess={fetchStudents}
+      />
 
       {/* 1. Move to Trash Confirmation Modal */}
       <ConfirmModal
