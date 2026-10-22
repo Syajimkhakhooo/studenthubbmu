@@ -50,7 +50,7 @@ export function calculateAge(birthDate) {
     if (m < 0 || (m === 0 && now.getDate() < birth.getDate())) {
       age--;
     }
-    return age > 0 ? `${age} thn` : '-';
+    return age > 0 ? `${age}` : '-';
   } catch {
     return '-';
   }

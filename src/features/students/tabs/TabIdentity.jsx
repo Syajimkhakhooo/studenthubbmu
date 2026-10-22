@@ -44,7 +44,7 @@ export function TabIdentity({ student }) {
             <div>
               <span className="text-xs text-subtle">Tempat, Tanggal Lahir</span>
               <div style={{ marginTop: '2px', color: 'var(--text-primary)' }}>
-                {student.birth_place || '-'}, {formatDate(student.birth_date)} ({calculateAge(student.birth_date)})
+                {student.birth_place || '-'}, {formatDate(student.birth_date)} ({calculateAge(student.birth_date)} tahun)
               </div>
             </div>
 
