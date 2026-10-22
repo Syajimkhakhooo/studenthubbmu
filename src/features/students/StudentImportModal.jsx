@@ -490,7 +490,9 @@ export function StudentImportModal({ isOpen, onClose, onSuccess }) {
 
     try {
       setIsSubmitting(true);
-      const res = await studentService.bulkCreateStudents(validRows, profile);
+      // Clean UI preview properties (errors, isValid, rowNumber) before sending to database
+      const cleanStudents = validRows.map(({ errors, isValid, rowNumber, ...studentData }) => studentData);
+      const res = await studentService.bulkCreateStudents(cleanStudents, profile);
       toastSuccess(`Berhasil mengimpor ${res.count} siswa baru ke Pangkalan Data BMU!`);
 
       if (onSuccess) {

@@ -228,18 +228,50 @@ export const studentService = {
       }
     });
 
-    // Strip relational properties
-    delete payload.student_journey;
-    delete payload.education_histories;
-    delete payload.work_experiences;
-    delete payload.family_members;
-    delete payload.certifications;
-    delete payload.student_documents;
-    delete payload.student_preferences;
-    delete payload.student_finances;
-    delete payload.student_status_history;
+    // Whitelist only valid DB columns for public.students table
+    // (Prevents UI metadata like 'errors', 'isValid', 'rowNumber' or relations from leaking to Supabase)
+    const validColumns = [
+      'student_id_number',
+      'full_name',
+      'nickname',
+      'gender',
+      'birth_place',
+      'birth_date',
+      'religion',
+      'blood_type',
+      'height_cm',
+      'weight_kg',
+      'domicile_address',
+      'id_card_address',
+      'phone_number',
+      'email',
+      'emergency_contact_name',
+      'emergency_contact_relation',
+      'emergency_contact_phone',
+      'entry_date',
+      'program_type',
+      'target_job_interest',
+      'eye_vision_status',
+      'smoking_status',
+      'tattoo_status',
+      'driving_license_type',
+      'willing_overtime',
+      'willing_relocation',
+      'marital_status',
+      'is_archived',
+      'notes',
+      'created_by',
+      'updated_by',
+    ];
 
-    return payload;
+    const cleanPayload = {};
+    validColumns.forEach((col) => {
+      if (payload[col] !== undefined) {
+        cleanPayload[col] = payload[col];
+      }
+    });
+
+    return cleanPayload;
   },
 
   /**
