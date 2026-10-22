@@ -58,16 +58,22 @@ export function StudentImportModal({ isOpen, onClose, onSuccess }) {
     if (!raw) return null;
     if (raw instanceof Date) {
       if (isNaN(raw.getTime())) return null;
-      return raw.toISOString().split('T')[0];
+      // Format as local YYYY-MM-DD (avoid UTC offset shifting the date)
+      const y = raw.getFullYear();
+      const m = String(raw.getMonth() + 1).padStart(2, '0');
+      const d = String(raw.getDate()).padStart(2, '0');
+      return `${y}-${m}-${d}`;
     }
     if (typeof raw === 'number') {
-      // Excel serial date code
+      // Excel serial date: days since 1899-12-30 (accounting for Lotus 1-2-3 bug)
       try {
-        const dateObj = XLSX.SSF.parse_date_code(raw);
-        if (dateObj) {
-          const y = String(dateObj.y).padStart(4, '0');
-          const m = String(dateObj.m).padStart(2, '0');
-          const d = String(dateObj.d).padStart(2, '0');
+        const excelEpoch = new Date(Date.UTC(1899, 11, 30));
+        const msPerDay = 86400000;
+        const dateObj = new Date(excelEpoch.getTime() + raw * msPerDay);
+        if (!isNaN(dateObj.getTime())) {
+          const y = dateObj.getUTCFullYear();
+          const m = String(dateObj.getUTCMonth() + 1).padStart(2, '0');
+          const d = String(dateObj.getUTCDate()).padStart(2, '0');
           return `${y}-${m}-${d}`;
         }
       } catch {
@@ -77,13 +83,30 @@ export function StudentImportModal({ isOpen, onClose, onSuccess }) {
     const str = String(raw).trim();
     // Match YYYY-MM-DD
     if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
-    // Match DD/MM/YYYY or DD-MM-YYYY
+    // Match DD/MM/YYYY or DD-MM-YYYY (Indonesian format)
     const dmy = str.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/);
     if (dmy) {
       const day = dmy[1].padStart(2, '0');
       const month = dmy[2].padStart(2, '0');
       const year = dmy[3];
       return `${year}-${month}-${day}`;
+    }
+    // Match M/D/YYYY (SheetJS raw:false default output format, US locale)
+    const mdy = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (mdy) {
+      // SheetJS outputs month/day/year in US format
+      const month = mdy[1].padStart(2, '0');
+      const day = mdy[2].padStart(2, '0');
+      const year = mdy[3];
+      return `${year}-${month}-${day}`;
+    }
+    // Try native Date parsing as last resort
+    const native = new Date(str);
+    if (!isNaN(native.getTime()) && str.length >= 8) {
+      const y = native.getFullYear();
+      const m = String(native.getMonth() + 1).padStart(2, '0');
+      const d = String(native.getDate()).padStart(2, '0');
+      return `${y}-${m}-${d}`;
     }
     return null;
   };
@@ -306,16 +329,19 @@ export function StudentImportModal({ isOpen, onClose, onSuccess }) {
 
     setFileName(file.name);
     setIsParsing(true);
+    setParsedRows([]);
 
     const reader = new FileReader();
     reader.onload = async (evt) => {
       try {
-        const bstr = evt.target.result;
-        const workbook = XLSX.read(bstr, { type: 'binary', cellDates: true });
+        // Use ArrayBuffer (modern, cross-browser safe approach for SheetJS)
+        const arrayBuffer = evt.target.result;
+        const workbook = XLSX.read(arrayBuffer, { type: 'array', cellDates: true });
         const firstSheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[firstSheetName];
 
-        const json = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
+        // raw:false so dates come as Date objects (thanks to cellDates:true), other cells as strings
+        const json = XLSX.utils.sheet_to_json(worksheet, { defval: '', raw: false });
         if (!json || json.length === 0) {
           toastError('File Excel tidak memiliki baris data atau kosong.');
           setParsedRows([]);
@@ -326,6 +352,7 @@ export function StudentImportModal({ isOpen, onClose, onSuccess }) {
       } catch (err) {
         console.error('Error parsing excel:', err);
         toastError('Gagal membaca file Excel. Pastikan format file .xlsx, .xls, atau .csv');
+        setParsedRows([]);
       } finally {
         setIsParsing(false);
       }
@@ -336,7 +363,8 @@ export function StudentImportModal({ isOpen, onClose, onSuccess }) {
       toastError('Gagal membuka file dari perangkat.');
     };
 
-    reader.readAsBinaryString(file);
+    // ArrayBuffer is the correct modern reader type for SheetJS
+    reader.readAsArrayBuffer(file);
   };
 
   /**
