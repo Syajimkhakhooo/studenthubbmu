@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { useTheme } from '../../hooks/useTheme';
 import { ROLE_LABELS } from '../../utils/constants';
@@ -9,6 +10,7 @@ import { Menu, LogOut, Shield, Database, Info, Sun, Moon } from 'lucide-react';
 export function Header({ onOpenMobileNav, pageTitle }) {
   const { profile, user, logout, isSupabaseConfigured } = useAuth();
   const { isDark, toggleTheme } = useTheme();
+  const navigate = useNavigate();
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [showCookieModal, setShowCookieModal] = useState(false);
 
@@ -185,9 +187,10 @@ export function Header({ onOpenMobileNav, pageTitle }) {
       <ConfirmModal
         isOpen={showLogoutConfirm}
         onClose={() => setShowLogoutConfirm(false)}
-        onConfirm={() => {
+        onConfirm={async () => {
           setShowLogoutConfirm(false);
-          logout();
+          await logout();
+          navigate('/');
         }}
         title="Konfirmasi Keluar"
         message="Apakah Anda yakin ingin mengakhiri sesi kerja Student Hub BMU pada perangkat ini?"

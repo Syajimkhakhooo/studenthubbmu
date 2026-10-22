@@ -84,7 +84,7 @@ export function generateStudentReportPdf({
     height: { header: 'TB (CM)', dataKey: 'height_cm' },
     weight: { header: 'BB (KG)', dataKey: 'weight_kg' },
     program: { header: 'PROGRAM', dataKey: 'program_type' },
-    ssw_field: { header: 'BIDANG SSW', dataKey: 'ssw_field' },
+    ssw_field: { header: 'BIDANG SSW & BAHASA', dataKey: 'ssw_field' },
     job_interest: { header: 'BIDANG MINAT', dataKey: 'target_job_interest' },
     entry_date: { header: 'TGL MASUK', dataKey: 'entry_date' },
     learning_status: { header: 'STATUS BELAJAR', dataKey: 'learning_status' },

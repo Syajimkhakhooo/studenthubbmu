@@ -101,7 +101,7 @@ export function ReportsExplorerPage() {
     { id: 'height', label: 'Tinggi Badan (cm)' },
     { id: 'weight', label: 'Berat Badan (kg)' },
     { id: 'program', label: 'Program Pelatihan (SSW/Magang)' },
-    { id: 'ssw_field', label: 'Bidang Spesifik SSW (dari Sertifikat)' },
+    { id: 'ssw_field', label: 'Bidang SSW & Bahasa (Kualifikasi Sertifikat)' },
     { id: 'job_interest', label: 'Bidang Minat Kerja' },
     { id: 'entry_date', label: 'Tanggal Masuk BMU' },
     { id: 'learning_status', label: 'Status Pembelajaran' },
@@ -221,7 +221,7 @@ export function ReportsExplorerPage() {
               : s.program_type === 'TG_INTERNSHIP'
               ? 'Magang / Ikushei Shuro'
               : s.program_type || '-',
-          'Bidang Spesifik SSW': sswField || '-',
+          'Bidang SSW & Bahasa': sswField || '-',
           'Bidang Minat Kerja': s.target_job_interest || '-',
           'Sertifikasi & Bahasa': certLabels || '-',
           'Status Belajar': getLearningStatusMeta(s.student_journey?.learning_status).label,

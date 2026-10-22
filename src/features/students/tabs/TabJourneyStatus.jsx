@@ -28,6 +28,17 @@ import { useAuth } from '../../../hooks/useAuth';
 import { useToast } from '../../../hooks/useToast';
 import { Route, Edit3, Clock, CheckCircle2, Building, Calendar } from 'lucide-react';
 
+// Label ramah untuk setiap dimensi status perjalanan siswa
+const DIMENSION_LABELS = {
+  learning_status: 'Status Pembelajaran Bahasa',
+  leave_status: 'Status Cuti Siswa',
+  interview_readiness: 'Kesiapan Wawancara Kerja',
+  job_selection_status: 'Status Seleksi & Penempatan Kerja',
+  departure_readiness: 'Kesiapan Keberangkatan',
+  departure_status: 'Status Keberangkatan Akhir',
+};
+
+
 export function TabJourneyStatus({ student, onUpdate }) {
   const { profile } = useAuth();
   const { success, error: toastError } = useToast();
@@ -378,7 +389,7 @@ export function TabJourneyStatus({ student, onUpdate }) {
         <Modal
           isOpen={Boolean(activeModalDim)}
           onClose={() => setActiveModalDim(null)}
-          title={`Perbarui ${activeModalDim.replace(/_/g, ' ').toUpperCase()}`}
+          title={`Perbarui ${DIMENSION_LABELS[activeModalDim] || activeModalDim.replace(/_/g, ' ')}`}
           footer={
             <>
               <Button variant="secondary" onClick={() => setActiveModalDim(null)} disabled={isLoading}>

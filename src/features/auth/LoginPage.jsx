@@ -7,7 +7,7 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { SupabaseConfigAlert } from '../../components/feedback/SupabaseConfigAlert';
 import { CookiePolicyModal } from './CookiePolicyModal';
-import { Lock, Mail, User, Info, UserPlus, LogIn, Sun, Moon } from 'lucide-react';
+import { Lock, Mail, User, Info, UserPlus, LogIn, Sun, Moon, ArrowLeft } from 'lucide-react';
 
 export function LoginPage() {
   const {

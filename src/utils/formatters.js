@@ -107,37 +107,59 @@ export function getDocStatusMeta(val) {
 }
 
 /**
- * Retrieve the specific SSW skill/field strictly from student's certifications data
- * (from the certificate input in Bahasa & Sertifikasi)
+ * Retrieve the full SSW and language certification qualifications from student's data.
+ * e.g. "JFT A2 Basic, SSW Pertanian" or "SSW Pertanian" or "JFT A2 Basic"
  */
 export function getStudentSswField(student) {
   if (!student) return '';
   const certs = student.certifications || [];
-  // Look for explicit SSW certificate entered in Bahasa & Sertifikasi
-  const sswCert = certs.find((c) => c.cert_type === 'SSW');
-  if (sswCert && sswCert.cert_level && sswCert.cert_level.trim()) {
-    return sswCert.cert_level.trim();
-  }
-  return '';
+  if (!Array.isArray(certs) || certs.length === 0) return '';
+
+  const langCerts = [];
+  const sswCerts = [];
+  const otherCerts = [];
+
+  certs.forEach((c) => {
+    if (!c) return;
+    if (c.cert_type === 'SSW') {
+      const lvl = c.cert_level?.trim() || '';
+      const label = lvl ? (lvl.toUpperCase().startsWith('SSW') ? lvl : `SSW ${lvl}`) : 'SSW';
+      sswCerts.push(label);
+    } else if (c.cert_type === 'JFT_BASIC') {
+      const lvl = c.cert_level?.trim() || 'A2';
+      const label = lvl.toUpperCase().includes('JFT') ? lvl : `JFT ${lvl} Basic`;
+      langCerts.push(label);
+    } else if (c.cert_type && c.cert_type.startsWith('JLPT_')) {
+      const defaultLvl = c.cert_type.replace('JLPT_', '');
+      const lvl = c.cert_level?.trim() || defaultLvl;
+      langCerts.push(`JLPT ${lvl}`);
+    } else if (c.cert_type) {
+      const lbl = formatCertificationLabel(c);
+      if (lbl) otherCerts.push(lbl);
+    }
+  });
+
+  // Urutkan Bahasa terlebih dahulu lalu Bidang SSW (contoh: JFT A2 Basic, SSW Pertanian)
+  const combined = [...langCerts, ...sswCerts, ...otherCerts];
+  return combined.join(', ');
 }
 
 /**
  * Format a single certification object into a clear human-readable string
- * e.g. SSW with cert_level 'Perikanan' -> 'SSW: Perikanan'
- * e.g. JFT_BASIC -> 'JFT-Basic A2'
+ * e.g. SSW with cert_level 'Pertanian' -> 'SSW Pertanian'
+ * e.g. JFT_BASIC with cert_level 'A2' -> 'JFT A2 Basic'
  * e.g. JLPT_N4 -> 'JLPT N4'
  */
 export function formatCertificationLabel(cert) {
   if (!cert) return '';
   if (cert.cert_type === 'SSW') {
-    return cert.cert_level && cert.cert_level.trim()
-      ? `SSW: ${cert.cert_level.trim()}`
-      : 'SSW (Tokutei Ginou)';
+    const lvl = cert.cert_level?.trim() || '';
+    if (!lvl) return 'SSW';
+    return lvl.toUpperCase().startsWith('SSW') ? lvl : `SSW ${lvl}`;
   }
   if (cert.cert_type === 'JFT_BASIC') {
-    return cert.cert_level && cert.cert_level.trim()
-      ? `JFT-Basic ${cert.cert_level.trim()}`
-      : 'JFT-Basic A2';
+    const lvl = cert.cert_level?.trim() || 'A2';
+    return lvl.toUpperCase().includes('JFT') ? lvl : `JFT ${lvl} Basic`;
   }
   if (cert.cert_type && cert.cert_type.startsWith('JLPT_')) {
     const defaultLevel = cert.cert_type.replace('JLPT_', '');
@@ -151,3 +173,4 @@ export function formatCertificationLabel(cert) {
     ? `${cert.cert_type} (${cert.cert_level.trim()})`
     : cert.cert_type;
 }
+
