@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { journeyService } from '../../services/journeyService';
 import { studentService } from '../../services/studentService';
 import { useAuth } from '../../hooks/useAuth';
@@ -37,17 +37,22 @@ export function StudentJourneyPage() {
   const { success, error: toastError } = useToast();
 
   const [overview, setOverview] = useState(null);
-  const [students, setStudents] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
-  const [selectedPipelineStage, setSelectedPipelineStage] = useState('all');
+  const [searchParams] = useSearchParams();
+  const stageFromUrl = searchParams.get('stage') || searchParams.get('filter') || 'all';
+  const [selectedPipelineStage, setSelectedPipelineStage] = useState(stageFromUrl);
+
+  useEffect(() => {
+    if (stageFromUrl) {
+      setSelectedPipelineStage(stageFromUrl);
+    }
+  }, [stageFromUrl]);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
       const [ov, stRes] = await Promise.all([
         journeyService.getJourneyOverview(),
-        studentService.getStudents({ pageSize: 100 }),
+        studentService.getStudents({ pageSize: 500 }),
       ]);
       setOverview(ov);
       setStudents(stRes.data || []);

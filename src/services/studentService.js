@@ -12,6 +12,10 @@ export const studentService = {
     learningStatus = '',
     jobStatus = '',
     departureStatus = '',
+    departureReadiness = '',
+    leaveStatus = '',
+    interviewReadiness = '',
+    entryPeriod = false,
     sortBy = 'created_at',
     sortAsc = false,
     includeArchived = false,
@@ -60,31 +64,97 @@ export const studentService = {
         query = query.eq('program_type', program);
       }
 
-      // Range for pagination
-      const from = (page - 1) * pageSize;
-      const to = from + pageSize - 1;
-
       // Sorting
-      query = query.order(sortBy, { ascending: sortAsc }).range(from, to);
+      query = query.order(sortBy, { ascending: sortAsc });
 
-      const { data, count, error } = await query;
+      const hasJourneyFilter = Boolean(
+        learningStatus ||
+        jobStatus ||
+        departureStatus ||
+        departureReadiness ||
+        leaveStatus ||
+        interviewReadiness ||
+        entryPeriod
+      );
+
+      // If no nested relational filters, use standard database pagination directly
+      if (!hasJourneyFilter) {
+        const from = (page - 1) * pageSize;
+        const to = from + pageSize - 1;
+        query = query.range(from, to);
+
+        const { data, count, error } = await query;
+        if (error) throw error;
+
+        return {
+          data: data || [],
+          total: count || 0,
+          page,
+          pageSize,
+        };
+      }
+
+      // If relational/journey filter is active, fetch all matching dataset to filter reliably without page skew
+      const { data, error } = await query;
       if (error) throw error;
 
-      // Optional post-filter on nested journey fields if needed
       let filteredData = data || [];
-      if (learningStatus) {
-        filteredData = filteredData.filter(s => s.student_journey?.learning_status === learningStatus);
-      }
-      if (jobStatus) {
-        filteredData = filteredData.filter(s => s.student_journey?.job_selection_status === jobStatus);
-      }
-      if (departureStatus) {
-        filteredData = filteredData.filter(s => s.student_journey?.departure_status === departureStatus);
+
+      // Filter: Leave status (Izin Cuti / Dicutikan Lembaga)
+      if (leaveStatus) {
+        if (leaveStatus === 'cuti' || leaveStatus === 'leave_cuti') {
+          filteredData = filteredData.filter(
+            (s) => s.student_journey?.leave_status === 'cuti' || s.student_journey?.leave_status === 'dicutikan'
+          );
+        } else {
+          filteredData = filteredData.filter((s) => s.student_journey?.leave_status === leaveStatus);
+        }
       }
 
+      // Filter: Learning status
+      if (learningStatus) {
+        filteredData = filteredData.filter((s) => s.student_journey?.learning_status === learningStatus);
+      }
+
+      // Filter: Job selection status
+      if (jobStatus) {
+        filteredData = filteredData.filter((s) => s.student_journey?.job_selection_status === jobStatus);
+      }
+
+      // Filter: Interview readiness
+      if (interviewReadiness) {
+        filteredData = filteredData.filter((s) => s.student_journey?.interview_readiness === interviewReadiness);
+      }
+
+      // Filter: Departure readiness
+      if (departureReadiness) {
+        filteredData = filteredData.filter((s) => s.student_journey?.departure_readiness === departureReadiness);
+      }
+
+      // Filter: Departure status
+      if (departureStatus) {
+        filteredData = filteredData.filter((s) => s.student_journey?.departure_status === departureStatus);
+      }
+
+      // Filter: Entry period (Current Month & Year)
+      if (entryPeriod) {
+        const now = new Date();
+        const curYear = now.getFullYear();
+        const curMonth = now.getMonth();
+        filteredData = filteredData.filter((s) => {
+          if (!s.entry_date) return false;
+          const d = new Date(s.entry_date);
+          return d.getFullYear() === curYear && d.getMonth() === curMonth;
+        });
+      }
+
+      const total = filteredData.length;
+      const from = (page - 1) * pageSize;
+      const paginatedData = filteredData.slice(from, from + pageSize);
+
       return {
-        data: filteredData,
-        total: count || filteredData.length,
+        data: paginatedData,
+        total,
         page,
         pageSize,
       };

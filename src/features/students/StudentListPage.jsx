@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { studentService } from '../../services/studentService';
 import { useAuth } from '../../hooks/useAuth';
@@ -56,6 +56,7 @@ export function StudentListPage() {
   const [loading, setLoading] = useState(true);
 
   // Filters state
+  const filterParam = searchParams.get('filter') || '';
   const [searchQuery, setSearchQuery] = useState(searchParams.get('q') || '');
   const [selectedProgram, setSelectedProgram] = useState(searchParams.get('program') || '');
   const [selectedLearningStatus, setSelectedLearningStatus] = useState(
@@ -70,6 +71,33 @@ export function StudentListPage() {
   );
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 10;
+
+  // Derive category filter (e.g. from Dashboard click: leave_cuti, interview_siap, entry_period, etc.)
+  const activeCategoryFilter = useMemo(() => {
+    if (!filterParam) return null;
+    if (filterParam === 'leave_cuti') {
+      return { type: 'leaveStatus', value: 'cuti', label: 'Izin Cuti / Nonaktif' };
+    }
+    if (filterParam === 'interview_siap') {
+      return { type: 'interviewReadiness', value: 'siap', label: 'Siap Interview' };
+    }
+    if (filterParam === 'entry_period') {
+      return { type: 'entryPeriod', value: true, label: 'Siswa Baru Bulan Ini' };
+    }
+    if (filterParam.startsWith('learning_')) {
+      const val = filterParam.replace('learning_', '');
+      return { type: 'learningStatus', value: val, label: 'Status Belajar: ' + val.replace(/_/g, ' ') };
+    }
+    if (filterParam.startsWith('job_')) {
+      const val = filterParam.replace('job_', '');
+      return { type: 'jobStatus', value: val, label: 'Status Seleksi: ' + (val === 'lolos' ? 'Lolos Seleksi Kerja' : val.replace(/_/g, ' ')) };
+    }
+    if (filterParam.startsWith('departure_')) {
+      const val = filterParam.replace('departure_', '');
+      return { type: 'departureReadiness', value: val, label: 'Kesiapan Keberangkatan: ' + val.replace(/_/g, ' ') };
+    }
+    return { type: 'custom', value: filterParam, label: filterParam.replace(/_/g, ' ') };
+  }, [filterParam]);
 
   // Modals state
   const [showAddModal, setShowAddModal] = useState(searchParams.get('action') === 'add');
@@ -94,7 +122,7 @@ export function StudentListPage() {
   const fetchStudents = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await studentService.getStudents({
+      const filterArgs = {
         page: currentPage,
         pageSize,
         search: searchQuery,
@@ -102,7 +130,13 @@ export function StudentListPage() {
         learningStatus: selectedLearningStatus,
         jobStatus: selectedJobStatus,
         onlyArchived: activeTab === 'trash',
-      });
+      };
+
+      if (activeCategoryFilter) {
+        filterArgs[activeCategoryFilter.type] = activeCategoryFilter.value;
+      }
+
+      const res = await studentService.getStudents(filterArgs);
       setStudents(res.data);
       setTotalCount(res.total);
       fetchTrashCount();
@@ -118,6 +152,7 @@ export function StudentListPage() {
     selectedLearningStatus,
     selectedJobStatus,
     activeTab,
+    activeCategoryFilter,
     fetchTrashCount,
     toastError,
   ]);
@@ -621,6 +656,33 @@ export function StudentListPage() {
       {/* Filter and Search Bar */}
       <Card>
         <CardBody style={{ padding: '16px' }}>
+          {activeCategoryFilter && (
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '10px 14px',
+                backgroundColor: 'var(--bg-surface-elevated)',
+                border: '1px solid var(--border-emphasis)',
+                borderRadius: 'var(--radius-md)',
+                marginBottom: '14px',
+                gap: '12px',
+                flexWrap: 'wrap',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Filter size={15} style={{ color: 'var(--text-secondary)' }} />
+                <span style={{ fontSize: '0.8125rem', color: 'var(--text-primary)' }}>
+                  Menampilkan filter kategori: <strong>{activeCategoryFilter.label}</strong> ({totalCount} siswa ditemukan)
+                </span>
+              </div>
+              <Button variant="ghost" size="sm" icon={RotateCcw} onClick={handleResetFilters}>
+                Hapus Filter (Tampilkan Semua Siswa)
+              </Button>
+            </div>
+          )}
+
           <div className="grid grid-cols-4 gap-3 md-grid-cols-1">
             <div style={{ gridColumn: 'span 2' }}>
               <Input
@@ -661,7 +723,7 @@ export function StudentListPage() {
             )}
           </div>
 
-          {(searchQuery || selectedProgram || selectedLearningStatus || selectedJobStatus) && (
+          {(searchQuery || selectedProgram || selectedLearningStatus || selectedJobStatus || activeCategoryFilter) && (
             <div
               style={{
                 display: 'flex',

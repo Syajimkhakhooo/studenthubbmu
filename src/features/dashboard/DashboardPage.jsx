@@ -499,9 +499,15 @@ export function DashboardPage() {
                   key={idx}
                   onClick={() => {
                     if (card.actionFilter.startsWith('departure_')) {
-                      navigate('/student-journey');
-                    } else {
+                      const stageKey = card.actionFilter.replace('departure_', '');
+                      let stage = stageKey;
+                      if (stageKey === 'ready') stage = 'siap_berangkat';
+                      if (stageKey === 'sudah') stage = 'sudah_berangkat';
+                      navigate(`/student-journey?stage=${stage}`);
+                    } else if (card.actionFilter) {
                       navigate(`/students?filter=${card.actionFilter}`);
+                    } else {
+                      navigate('/students');
                     }
                   }}
                   style={{
