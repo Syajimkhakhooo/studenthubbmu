@@ -619,6 +619,83 @@ export const studentService = {
   },
 
   /**
+   * Permanently delete ALL students in the trash bin (is_archived = true)
+   * @returns {Promise<{count: number}>}
+   */
+  async emptyTrash(actorProfile) {
+    if (!isSupabaseConfigured) throw new Error('Supabase belum terhubung.');
+
+    try {
+      // Count first for audit summary
+      const { count: trashCount } = await supabase
+        .from('students')
+        .select('*', { count: 'exact', head: true })
+        .eq('is_archived', true);
+
+      if (!trashCount || trashCount === 0) return { count: 0 };
+
+      const { error } = await supabase
+        .from('students')
+        .delete()
+        .eq('is_archived', true);
+
+      if (error) throw error;
+
+      await this.logAudit({
+        actorProfile,
+        action: 'BULK_DELETE',
+        entityType: 'student',
+        entityId: null,
+        summary: `Mengosongkan tong sampah: ${trashCount} siswa dihapus permanen sekaligus`,
+      });
+
+      return { count: trashCount };
+    } catch (err) {
+      console.error('Error emptying trash:', err);
+      throw err;
+    }
+  },
+
+  /**
+   * Permanently delete ALL active students (is_archived = false)
+   * ⚠️ EXTREME DANGER — irreversible, used only after double-confirmation
+   * @returns {Promise<{count: number}>}
+   */
+  async deleteAllActiveStudents(actorProfile) {
+    if (!isSupabaseConfigured) throw new Error('Supabase belum terhubung.');
+
+    try {
+      // Count first for audit summary
+      const { count: activeCount } = await supabase
+        .from('students')
+        .select('*', { count: 'exact', head: true })
+        .eq('is_archived', false);
+
+      if (!activeCount || activeCount === 0) return { count: 0 };
+
+      const { error } = await supabase
+        .from('students')
+        .delete()
+        .eq('is_archived', false);
+
+      if (error) throw error;
+
+      await this.logAudit({
+        actorProfile,
+        action: 'BULK_DELETE_ALL',
+        entityType: 'student',
+        entityId: null,
+        summary: `HAPUS SEMUA DATA: ${activeCount} siswa aktif dihapus permanen sekaligus`,
+      });
+
+      return { count: activeCount };
+    } catch (err) {
+      console.error('Error deleting all active students:', err);
+      throw err;
+    }
+  },
+
+  /**
    * Internal audit logger
    */
   async logAudit({ actorProfile, action, entityType, entityId, summary }) {

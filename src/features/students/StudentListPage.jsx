@@ -37,6 +37,8 @@ import {
   RotateCcw,
   Users,
   FileSpreadsheet,
+  Flame,
+  AlertTriangle,
 } from 'lucide-react';
 
 export function StudentListPage() {
@@ -76,6 +78,9 @@ export function StudentListPage() {
   const [archiveTarget, setArchiveTarget] = useState(null);
   const [restoreTarget, setRestoreTarget] = useState(null);
   const [deletePermanentTarget, setDeletePermanentTarget] = useState(null);
+  const [showEmptyTrashConfirm, setShowEmptyTrashConfirm] = useState(false);
+  const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false);
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
 
   const fetchTrashCount = useCallback(async () => {
     try {
@@ -180,6 +185,44 @@ export function StudentListPage() {
       fetchStudents();
     } catch (err) {
       toastError(err.message || 'Gagal menghapus siswa permanen');
+    }
+  };
+
+  // Empty trash bin (delete all archived students permanently)
+  const handleEmptyTrash = async () => {
+    try {
+      setIsBulkDeleting(true);
+      const res = await studentService.emptyTrash(profile);
+      if (res.count === 0) {
+        success('Tong sampah sudah kosong.');
+      } else {
+        success(`Berhasil menghapus permanen ${res.count} siswa dari tong sampah.`);
+      }
+      setShowEmptyTrashConfirm(false);
+      fetchStudents();
+    } catch (err) {
+      toastError(err.message || 'Gagal mengosongkan tong sampah.');
+    } finally {
+      setIsBulkDeleting(false);
+    }
+  };
+
+  // Delete ALL active students permanently
+  const handleDeleteAllActive = async () => {
+    try {
+      setIsBulkDeleting(true);
+      const res = await studentService.deleteAllActiveStudents(profile);
+      if (res.count === 0) {
+        success('Tidak ada siswa aktif yang tersisa.');
+      } else {
+        success(`Berhasil menghapus permanen ${res.count} data siswa aktif.`);
+      }
+      setShowDeleteAllConfirm(false);
+      fetchStudents();
+    } catch (err) {
+      toastError(err.message || 'Gagal menghapus semua data siswa.');
+    } finally {
+      setIsBulkDeleting(false);
     }
   };
 
@@ -442,21 +485,56 @@ export function StudentListPage() {
           </p>
         </div>
 
-        <div style={{ display: 'flex', gap: '10px' }}>
-          <Button variant="secondary" icon={Filter} onClick={() => navigate('/reports')}>
-            Data Explorer
-          </Button>
-          <Button
-            variant="secondary"
-            icon={FileSpreadsheet}
-            onClick={() => setShowImportModal(true)}
-            title="Import banyak data siswa sekaligus dari file Excel atau CSV"
-          >
-            Import Excel
-          </Button>
-          <Button variant="primary" icon={UserPlus} onClick={() => setShowAddModal(true)}>
-            Tambah Siswa Baru
-          </Button>
+        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+          {activeTab === 'trash' ? (
+            // ── Trash tab actions ──────────────────────────────────────────
+            <>
+              <Button
+                variant="outline"
+                icon={Flame}
+                onClick={() => setShowEmptyTrashConfirm(true)}
+                disabled={trashCount === 0}
+                style={{
+                  color: '#ef4444',
+                  borderColor: 'rgba(239,68,68,0.4)',
+                }}
+                title="Hapus permanen semua siswa di tong sampah"
+              >
+                Kosongkan Tong Sampah {trashCount > 0 && `(${trashCount})`}
+              </Button>
+            </>
+          ) : (
+            // ── Active tab actions ─────────────────────────────────────────
+            <>
+              <Button variant="secondary" icon={Filter} onClick={() => navigate('/reports')}>
+                Data Explorer
+              </Button>
+              <Button
+                variant="secondary"
+                icon={FileSpreadsheet}
+                onClick={() => setShowImportModal(true)}
+                title="Import banyak data siswa sekaligus dari file Excel atau CSV"
+              >
+                Import Excel
+              </Button>
+              <Button
+                variant="outline"
+                icon={AlertTriangle}
+                onClick={() => setShowDeleteAllConfirm(true)}
+                disabled={totalCount === 0}
+                style={{
+                  color: '#ef4444',
+                  borderColor: 'rgba(239,68,68,0.4)',
+                }}
+                title="Hapus permanen SEMUA data siswa aktif"
+              >
+                Hapus Semua Data
+              </Button>
+              <Button variant="primary" icon={UserPlus} onClick={() => setShowAddModal(true)}>
+                Tambah Siswa Baru
+              </Button>
+            </>
+          )}
         </div>
       </div>
 
@@ -751,6 +829,28 @@ export function StudentListPage() {
         title="Hapus Permanen Siswa"
         message={`PERINGATAN: Tindakan ini akan menghapus siswa "${deletePermanentTarget?.full_name}" (${deletePermanentTarget?.student_id_number}) beserta seluruh berkas dokumen, riwayat pendidikan, keluarga, dan status perjalanannya secara PERMANEN dari database Supabase. Tindakan ini TIDAK DAPAT DIBATALKAN.`}
         confirmText="Hapus Permanen Sekarang"
+        variant="danger"
+      />
+
+      {/* 4. Empty Trash Confirmation Modal */}
+      <ConfirmModal
+        isOpen={showEmptyTrashConfirm}
+        onClose={() => setShowEmptyTrashConfirm(false)}
+        onConfirm={handleEmptyTrash}
+        title="⚠️ Kosongkan Tong Sampah?"
+        message={`Tindakan ini akan menghapus PERMANEN ${trashCount} siswa yang ada di tong sampah beserta seluruh data terkaitnya (dokumen, riwayat, keluarga, dsb). Data yang sudah dihapus TIDAK BISA DIPULIHKAN kembali. Apakah Anda benar-benar yakin?`}
+        confirmText={isBulkDeleting ? 'Menghapus...' : `Hapus Permanen ${trashCount} Siswa`}
+        variant="danger"
+      />
+
+      {/* 5. Delete ALL Active Students Confirmation Modal */}
+      <ConfirmModal
+        isOpen={showDeleteAllConfirm}
+        onClose={() => setShowDeleteAllConfirm(false)}
+        onConfirm={handleDeleteAllActive}
+        title="🚨 HAPUS SEMUA DATA SISWA?"
+        message={`PERINGATAN KERAS: Tindakan ini akan menghapus PERMANEN seluruh ${totalCount} data siswa aktif dari database beserta semua dokumen, riwayat pendidikan, riwayat kerja, data keluarga, sertifikasi, dan status perjalanannya. Operasi ini TIDAK DAPAT DIBATALKAN dalam kondisi apapun. Pastikan Anda memiliki backup sebelum melanjutkan.`}
+        confirmText={isBulkDeleting ? 'Menghapus...' : `Hapus Permanen Semua ${totalCount} Siswa`}
         variant="danger"
       />
     </div>
