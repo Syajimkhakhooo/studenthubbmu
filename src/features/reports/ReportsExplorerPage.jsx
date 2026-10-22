@@ -217,9 +217,7 @@ export function ReportsExplorerPage() {
           'Berat (kg)': s.weight_kg || '-',
           'Program BMU':
             s.program_type === 'SSW'
-              ? sswField
-                ? `Tokutei Ginou - SSW (${sswField})`
-                : 'Tokutei Ginou (SSW)'
+              ? 'Tokutei Ginou (SSW)'
               : s.program_type === 'TG_INTERNSHIP'
               ? 'Magang / Ikushei Shuro'
               : s.program_type || '-',
@@ -274,24 +272,14 @@ export function ReportsExplorerPage() {
     {
       header: 'NAMA LENGKAP',
       accessor: 'full_name',
-      render: (row) => {
-        const sswField = getStudentSswField(row);
-        return (
-          <div>
-            <strong style={{ color: 'var(--text-primary)' }}>{row.full_name}</strong>
-            <div style={{ fontSize: '0.6875rem', color: 'var(--text-tertiary)', marginTop: '2px' }}>
-              {row.gender === 'L' ? 'Laki-laki' : 'Perempuan'} •{' '}
-              {row.program_type === 'SSW'
-                ? sswField
-                  ? `SSW (${sswField})`
-                  : 'Tokutei Ginou (SSW)'
-                : row.program_type === 'TG_INTERNSHIP'
-                ? 'Magang'
-                : row.program_type || '-'}
-            </div>
+      render: (row) => (
+        <div>
+          <strong style={{ color: 'var(--text-primary)' }}>{row.full_name}</strong>
+          <div style={{ fontSize: '0.6875rem', color: 'var(--text-tertiary)', marginTop: '2px' }}>
+            {row.gender === 'L' ? 'Laki-laki' : 'Perempuan'} • Program {row.program_type === 'SSW' ? 'Tokutei Ginou (SSW)' : row.program_type === 'TG_INTERNSHIP' ? 'Magang / Ikushei Shuro' : row.program_type || '-'}
           </div>
-        );
-      },
+        </div>
+      ),
     },
     {
       header: 'USIA & TB',

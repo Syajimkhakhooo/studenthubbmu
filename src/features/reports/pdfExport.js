@@ -121,8 +121,7 @@ export function generateStudentReportPdf({
           break;
         case 'program': {
           if (s.program_type === 'SSW') {
-            const sswField = getStudentSswField(s);
-            row.push(sswField ? `SSW (${sswField})` : 'Tokutei Ginou (SSW)');
+            row.push('Tokutei Ginou (SSW)');
           } else if (s.program_type === 'TG_INTERNSHIP') {
             row.push('Magang / Ikushei Shuro');
           } else {

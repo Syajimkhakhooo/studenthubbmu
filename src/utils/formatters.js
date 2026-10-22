@@ -107,19 +107,18 @@ export function getDocStatusMeta(val) {
 }
 
 /**
- * Retrieve the specific SSW skill/field from student's certifications data
- * (or fallback to student's target_job_interest if not yet certified)
+ * Retrieve the specific SSW skill/field strictly from student's certifications data
+ * (from the certificate input in Bahasa & Sertifikasi)
  */
 export function getStudentSswField(student) {
   if (!student) return '';
   const certs = student.certifications || [];
-  // 1. Look for explicit SSW certificate
+  // Look for explicit SSW certificate entered in Bahasa & Sertifikasi
   const sswCert = certs.find((c) => c.cert_type === 'SSW');
   if (sswCert && sswCert.cert_level && sswCert.cert_level.trim()) {
     return sswCert.cert_level.trim();
   }
-  // 2. Fallback to target job interest
-  return student.target_job_interest || student.job_interest_main || '';
+  return '';
 }
 
 /**
