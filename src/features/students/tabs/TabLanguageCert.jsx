@@ -5,8 +5,8 @@ import { Input } from '../../../components/ui/Input';
 import { Select } from '../../../components/ui/Select';
 import { Badge } from '../../../components/ui/Badge';
 import { Modal } from '../../../components/ui/Modal';
-import { CERTIFICATION_TYPES } from '../../../utils/constants';
-import { formatDate } from '../../../utils/formatters';
+import { CERTIFICATION_TYPES, JOB_INTEREST_FIELDS } from '../../../utils/constants';
+import { formatDate, formatCertificationLabel } from '../../../utils/formatters';
 import { studentService } from '../../../services/studentService';
 import { useToast } from '../../../hooks/useToast';
 import { Award, Plus, Trash2, Edit2 } from 'lucide-react';
@@ -128,21 +128,22 @@ export function TabLanguageCert({ student, onUpdate }) {
                 }}
               >
                 <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                     <span
                       style={{
                         padding: '2px 8px',
-                        backgroundColor: 'var(--bg-app)',
+                        backgroundColor: item.cert_type === 'SSW' ? 'rgba(59, 130, 246, 0.15)' : 'var(--bg-app)',
+                        color: item.cert_type === 'SSW' ? '#60a5fa' : 'var(--text-primary)',
                         borderRadius: 'var(--radius-sm)',
                         fontSize: '0.75rem',
                         fontWeight: 600,
-                        border: '1px solid var(--border-subtle)',
+                        border: `1px solid ${item.cert_type === 'SSW' ? 'rgba(59, 130, 246, 0.35)' : 'var(--border-subtle)'}`,
                       }}
                     >
                       {item.cert_type}
                     </span>
-                    <strong style={{ color: 'var(--text-primary)' }}>
-                      {item.cert_level ? `Level ${item.cert_level}` : item.cert_type}
+                    <strong style={{ color: 'var(--text-primary)', fontSize: '0.9375rem' }}>
+                      {formatCertificationLabel(item)}
                     </strong>
                     <Badge variant={item.verification_status === 'verified' ? 'success' : 'neutral'}>
                       {item.verification_status === 'verified' ? 'Terverifikasi' : 'Belum Diverifikasi'}
@@ -184,16 +185,56 @@ export function TabLanguageCert({ student, onUpdate }) {
           <Select
             label="Tipe Sertifikasi"
             value={formData.cert_type}
-            onChange={(e) => setFormData({ ...formData, cert_type: e.target.value })}
+            onChange={(e) => {
+              const newType = e.target.value;
+              let defaultLevel = formData.cert_level;
+              if (newType === 'JFT_BASIC' && (!defaultLevel || defaultLevel.length > 3)) defaultLevel = 'A2';
+              if (newType.startsWith('JLPT_') && (!defaultLevel || defaultLevel.length > 3)) defaultLevel = newType.replace('JLPT_', '');
+              if (newType === 'SSW' && (!defaultLevel || ['A2', 'N5', 'N4', 'N3', 'N2', 'N1'].includes(defaultLevel))) {
+                defaultLevel = student.target_job_interest || student.job_interest_main || '';
+              }
+              setFormData({ ...formData, cert_type: newType, cert_level: defaultLevel });
+            }}
             options={CERTIFICATION_TYPES}
             required
           />
-          <Input
-            label="Level / Kategori Spesifik"
-            value={formData.cert_level}
-            onChange={(e) => setFormData({ ...formData, cert_level: e.target.value })}
-            placeholder="A2 / N4 / Kaigo / Food Processing dll."
-          />
+
+          {formData.cert_type === 'SSW' ? (
+            <div className="form-group">
+              <label className="form-label">
+                Bidang Keahlian SSW (Spesifik) <span style={{ color: 'var(--status-danger-text)' }}>*</span>
+              </label>
+              <input
+                list="ssw-fields-options"
+                className="form-input"
+                value={formData.cert_level}
+                onChange={(e) => setFormData({ ...formData, cert_level: e.target.value })}
+                placeholder="Pilih atau ketik: Perikanan, Pengelasan, Kaigo, dll."
+                required
+              />
+              <datalist id="ssw-fields-options">
+                {JOB_INTEREST_FIELDS.map((f) => (
+                  <option key={f} value={f} />
+                ))}
+              </datalist>
+              <span className="form-help-text">
+                Pilih atau ketik bidang keahlian SSW siswa. Data ini akan ditampilkan jelas pada ekspor PDF &amp; Excel.
+              </span>
+            </div>
+          ) : (
+            <Input
+              label="Level / Kategori Spesifik"
+              value={formData.cert_level}
+              onChange={(e) => setFormData({ ...formData, cert_level: e.target.value })}
+              placeholder={
+                formData.cert_type === 'JFT_BASIC'
+                  ? 'A2'
+                  : formData.cert_type?.startsWith('JLPT')
+                  ? formData.cert_type.replace('JLPT_', '')
+                  : 'Level atau kategori spesifik'
+              }
+            />
+          )}
           <div className="grid grid-cols-2 gap-3">
             <Input
               label="Nilai / Skor Ujian"

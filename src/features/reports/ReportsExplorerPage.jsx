@@ -28,7 +28,11 @@ import {
   getLearningStatusMeta,
   getJobSelectionMeta,
   getDepartureStatusMeta,
+  getDepartureReadinessMeta,
+  getStudentSswField,
+  formatCertificationLabel,
 } from '../../utils/formatters';
+import * as XLSX from 'xlsx';
 import {
   Filter,
   FileDown,
@@ -96,13 +100,14 @@ export function ReportsExplorerPage() {
     { id: 'age', label: 'Usia Siswa' },
     { id: 'height', label: 'Tinggi Badan (cm)' },
     { id: 'weight', label: 'Berat Badan (kg)' },
-    { id: 'program', label: 'Program (SSW/TG)' },
+    { id: 'program', label: 'Program Pelatihan (SSW/Magang)' },
+    { id: 'ssw_field', label: 'Bidang Spesifik SSW (dari Sertifikat)' },
     { id: 'job_interest', label: 'Bidang Minat Kerja' },
     { id: 'entry_date', label: 'Tanggal Masuk BMU' },
     { id: 'learning_status', label: 'Status Pembelajaran' },
     { id: 'selection_status', label: 'Status Seleksi Kerja' },
     { id: 'departure_status', label: 'Status Keberangkatan' },
-    { id: 'certs', label: 'Daftar Sertifikat' },
+    { id: 'certs', label: 'Daftar Sertifikat & Bahasa' },
   ];
 
   const handleFilterChange = (field, val) => {
@@ -192,6 +197,56 @@ export function ReportsExplorerPage() {
     }
   };
 
+  const handleExportExcel = () => {
+    try {
+      if (students.length === 0) return;
+
+      const excelRows = students.map((s, idx) => {
+        const sswField = getStudentSswField(s);
+        const certLabels = (s.certifications || []).map((c) => formatCertificationLabel(c)).join(', ');
+
+        return {
+          'No': idx + 1,
+          'No. ID Siswa': s.student_id_number || '-',
+          'Nama Lengkap': s.full_name || '-',
+          'Nama Panggilan': s.nickname || '-',
+          'Jenis Kelamin': s.gender === 'L' ? 'Laki-laki' : s.gender === 'P' ? 'Perempuan' : '-',
+          'Usia (Tahun)': calculateAge(s.birth_date),
+          'Tanggal Lahir': formatDate(s.birth_date),
+          'Tinggi (cm)': s.height_cm || '-',
+          'Berat (kg)': s.weight_kg || '-',
+          'Program BMU':
+            s.program_type === 'SSW'
+              ? sswField
+                ? `Tokutei Ginou - SSW (${sswField})`
+                : 'Tokutei Ginou (SSW)'
+              : s.program_type === 'TG_INTERNSHIP'
+              ? 'Magang / Ikushei Shuro'
+              : s.program_type || '-',
+          'Bidang Spesifik SSW': sswField || '-',
+          'Bidang Minat Kerja': s.target_job_interest || '-',
+          'Sertifikasi & Bahasa': certLabels || '-',
+          'Status Belajar': getLearningStatusMeta(s.student_journey?.learning_status).label,
+          'Kesiapan Wawancara': s.student_journey?.interview_readiness === 'siap' ? 'Siap Wawancara' : 'Belum Siap',
+          'Status Seleksi': getJobSelectionMeta(s.student_journey?.job_selection_status).label,
+          'Kesiapan Berangkat': getDepartureReadinessMeta(s.student_journey?.departure_readiness).label,
+          'Status Keberangkatan': getDepartureStatusMeta(s.student_journey?.departure_status).label,
+          'Tanggal Masuk': formatDate(s.entry_date),
+        };
+      });
+
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.json_to_sheet(excelRows);
+      XLSX.utils.book_append_sheet(wb, ws, 'Data Siswa BMU');
+
+      const dateStr = new Date().toISOString().slice(0, 10);
+      XLSX.writeFile(wb, `Laporan_Data_Siswa_BMU_${dateStr}.xlsx`);
+      success(`Laporan Excel (${students.length} siswa) berhasil diunduh.`);
+    } catch (err) {
+      toastError('Gagal mengunduh Excel: ' + err.message);
+    }
+  };
+
   const toggleColumn = (colId) => {
     setSelectedColumns((prev) =>
       prev.includes(colId) ? prev.filter((c) => c !== colId) : [...prev, colId]
@@ -219,14 +274,24 @@ export function ReportsExplorerPage() {
     {
       header: 'NAMA LENGKAP',
       accessor: 'full_name',
-      render: (row) => (
-        <div>
-          <strong style={{ color: 'var(--text-primary)' }}>{row.full_name}</strong>
-          <div style={{ fontSize: '0.6875rem', color: 'var(--text-tertiary)' }}>
-            {row.gender === 'L' ? 'Laki-laki' : 'Perempuan'}  •  Program {row.program_type}
+      render: (row) => {
+        const sswField = getStudentSswField(row);
+        return (
+          <div>
+            <strong style={{ color: 'var(--text-primary)' }}>{row.full_name}</strong>
+            <div style={{ fontSize: '0.6875rem', color: 'var(--text-tertiary)', marginTop: '2px' }}>
+              {row.gender === 'L' ? 'Laki-laki' : 'Perempuan'} •{' '}
+              {row.program_type === 'SSW'
+                ? sswField
+                  ? `SSW (${sswField})`
+                  : 'Tokutei Ginou (SSW)'
+                : row.program_type === 'TG_INTERNSHIP'
+                ? 'Magang'
+                : row.program_type || '-'}
+            </div>
           </div>
-        </div>
-      ),
+        );
+      },
     },
     {
       header: 'USIA & TB',
@@ -241,13 +306,48 @@ export function ReportsExplorerPage() {
       ),
     },
     {
-      header: 'MINAT BIDANG',
+      header: 'BIDANG MINAT',
       accessor: 'target_job_interest',
       render: (row) => (
         <span style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>
           {row.target_job_interest || '-'}
         </span>
       ),
+    },
+    {
+      header: 'SERTIFIKASI & BAHASA',
+      accessor: 'certs',
+      render: (row) => {
+        const certs = row.certifications || [];
+        if (certs.length === 0) {
+          return <span style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>-</span>;
+        }
+        return (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', maxWidth: '240px' }}>
+            {certs.map((c, i) => {
+              const label = formatCertificationLabel(c);
+              const isSsw = c.cert_type === 'SSW';
+              return (
+                <span
+                  key={i}
+                  style={{
+                    fontSize: '0.6875rem',
+                    padding: '2px 6px',
+                    borderRadius: 'var(--radius-sm)',
+                    backgroundColor: isSsw ? 'rgba(59, 130, 246, 0.15)' : 'var(--bg-surface-elevated)',
+                    color: isSsw ? '#60a5fa' : 'var(--text-secondary)',
+                    border: `1px solid ${isSsw ? 'rgba(59, 130, 246, 0.35)' : 'var(--border-subtle)'}`,
+                    fontWeight: isSsw ? 600 : 400,
+                  }}
+                  title={c.cert_level ? `Level/Bidang: ${c.cert_level}` : c.cert_type}
+                >
+                  {label}
+                </span>
+              );
+            })}
+          </div>
+        );
+      },
     },
     {
       header: 'STATUS BELAJAR',
@@ -288,19 +388,29 @@ export function ReportsExplorerPage() {
         }}
       >
         <div>
-          <h1 style={{ fontSize: '1.25rem', fontWeight: 700 }}>Student Data Explorer &amp; Laporan PDF</h1>
+          <h1 style={{ fontSize: '1.25rem', fontWeight: 700 }}>Student Data Explorer &amp; Laporan</h1>
           <p style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>
-            Eksplorasi gabungan kriteria dinamis dan cetak laporan resmi A4 tanpa foto siswa
+            Eksplorasi gabungan kriteria dinamis dan cetak laporan resmi A4 PDF atau spreadsheet Excel
           </p>
         </div>
 
-        <div style={{ display: 'flex', gap: '10px' }}>
+        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
           <Button
             variant="outline"
             icon={RotateCcw}
             onClick={handleResetFilters}
           >
             Reset Filter
+          </Button>
+
+          <Button
+            variant="secondary"
+            icon={FileSpreadsheet}
+            disabled={students.length === 0}
+            onClick={handleExportExcel}
+            title="Unduh seluruh data hasil pencarian dalam file spreadsheet Excel (.xlsx)"
+          >
+            Ekspor Excel ({students.length})
           </Button>
 
           <Button

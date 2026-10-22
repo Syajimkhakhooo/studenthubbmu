@@ -1,6 +1,14 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { formatDate, calculateAge, getLearningStatusMeta, getJobSelectionMeta, getDepartureStatusMeta } from '../../utils/formatters';
+import {
+  formatDate,
+  calculateAge,
+  getLearningStatusMeta,
+  getJobSelectionMeta,
+  getDepartureStatusMeta,
+  getStudentSswField,
+  formatCertificationLabel,
+} from '../../utils/formatters';
 
 /**
  * Generate and download professional BMU Student Report in PDF format
@@ -10,7 +18,7 @@ export function generateStudentReportPdf({
   students = [],
   filterSummary = '',
   orientation = 'portrait', // 'portrait' | 'landscape'
-  selectedColumns = ['student_id', 'name', 'gender', 'age', 'height', 'program', 'job_interest', 'learning_status', 'selection_status'],
+  selectedColumns = ['student_id', 'name', 'gender', 'age', 'height', 'program', 'job_interest', 'learning_status', 'selection_status', 'certs'],
   reportTitle = 'LAPORAN REKAPITULASI DATA SISWA',
 }) {
   const doc = new jsPDF({
@@ -76,19 +84,20 @@ export function generateStudentReportPdf({
     height: { header: 'TB (CM)', dataKey: 'height_cm' },
     weight: { header: 'BB (KG)', dataKey: 'weight_kg' },
     program: { header: 'PROGRAM', dataKey: 'program_type' },
+    ssw_field: { header: 'BIDANG SSW', dataKey: 'ssw_field' },
     job_interest: { header: 'BIDANG MINAT', dataKey: 'target_job_interest' },
     entry_date: { header: 'TGL MASUK', dataKey: 'entry_date' },
     learning_status: { header: 'STATUS BELAJAR', dataKey: 'learning_status' },
     selection_status: { header: 'STATUS SELEKSI', dataKey: 'job_selection_status' },
     departure_status: { header: 'KEBERANGKATAN', dataKey: 'departure_status' },
-    certs: { header: 'SERTIFIKASI', dataKey: 'certs' },
+    certs: { header: 'SERTIFIKASI & BAHASA', dataKey: 'certs' },
   };
 
   const activeHeaders = selectedColumns
     .filter((col) => columnDefs[col])
     .map((col) => columnDefs[col].header);
 
-  const tableRows = students.map((s, idx) => {
+  const tableRows = students.map((s) => {
     const row = [];
     selectedColumns.forEach((col) => {
       switch (col) {
@@ -110,9 +119,22 @@ export function generateStudentReportPdf({
         case 'weight':
           row.push(s.weight_kg ? `${s.weight_kg}` : '-');
           break;
-        case 'program':
-          row.push(s.program_type || '-');
+        case 'program': {
+          if (s.program_type === 'SSW') {
+            const sswField = getStudentSswField(s);
+            row.push(sswField ? `SSW (${sswField})` : 'Tokutei Ginou (SSW)');
+          } else if (s.program_type === 'TG_INTERNSHIP') {
+            row.push('Magang / Ikushei Shuro');
+          } else {
+            row.push(s.program_type || '-');
+          }
           break;
+        }
+        case 'ssw_field': {
+          const sswField = getStudentSswField(s);
+          row.push(sswField || '-');
+          break;
+        }
         case 'job_interest':
           row.push(s.target_job_interest || '-');
           break;
@@ -129,7 +151,7 @@ export function generateStudentReportPdf({
           row.push(getDepartureStatusMeta(s.student_journey?.departure_status).label);
           break;
         case 'certs': {
-          const certLabels = (s.certifications || []).map((c) => c.cert_type);
+          const certLabels = (s.certifications || []).map((c) => formatCertificationLabel(c));
           row.push(certLabels.length > 0 ? certLabels.join(', ') : '-');
           break;
         }
