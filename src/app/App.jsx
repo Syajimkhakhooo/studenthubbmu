@@ -1,11 +1,14 @@
 import React from 'react';
 import { AppProviders } from './providers';
 import { AppRouter } from './router';
+import { ErrorBoundary } from '../components/feedback/ErrorBoundary';
 
 export function App() {
   return (
     <AppProviders>
-      <AppRouter />
+      <ErrorBoundary>
+        <AppRouter />
+      </ErrorBoundary>
     </AppProviders>
   );
 }

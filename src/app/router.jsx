@@ -36,6 +36,7 @@ export function AppRouter() {
         <Route path="/students/:id" element={<StudentDetailPage />} />
         <Route path="/documents" element={<DocumentHubPage />} />
         <Route path="/journey" element={<StudentJourneyPage />} />
+        <Route path="/journeys" element={<Navigate to="/journey" replace />} />
         <Route path="/reports" element={<ReportsExplorerPage />} />
         <Route
           path="/settings"

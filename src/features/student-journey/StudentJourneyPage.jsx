@@ -36,6 +36,9 @@ export function StudentJourneyPage() {
   const { profile } = useAuth();
   const { success, error: toastError } = useToast();
 
+  const [students, setStudents] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
   const [overview, setOverview] = useState(null);
   const [searchParams] = useSearchParams();
   const stageFromUrl = searchParams.get('stage') || searchParams.get('filter') || 'all';
@@ -55,7 +58,7 @@ export function StudentJourneyPage() {
         studentService.getStudents({ pageSize: 500 }),
       ]);
       setOverview(ov);
-      setStudents(stRes.data || []);
+      setStudents(stRes?.data || []);
     } catch (err) {
       toastError('Gagal memuat status perjalanan siswa.');
     } finally {
@@ -68,7 +71,7 @@ export function StudentJourneyPage() {
   }, [fetchData]);
 
   const stages = [
-    { id: 'all', label: 'Semua Siswa Aktif', count: students.length },
+    { id: 'all', label: 'Semua Siswa Aktif', count: (students || []).length },
     { id: 'belajar', label: 'Sedang Belajar', count: overview?.learning?.sedang_belajar || 0 },
     { id: 'siap_interview', label: 'Siap Interview', count: overview?.interview?.siap || 0 },
     { id: 'lolos_seleksi', label: 'Lolos Seleksi Kerja', count: overview?.jobSelection?.lolos || 0 },
@@ -79,8 +82,8 @@ export function StudentJourneyPage() {
     { id: 'cuti', label: 'Izin Cuti / Nonaktif', count: (overview?.leave?.cuti || 0) + (overview?.leave?.dicutikan || 0) },
   ];
 
-  const filteredStudents = students.filter((s) => {
-    const j = s.student_journey;
+  const filteredStudents = (students || []).filter((s) => {
+    const j = Array.isArray(s.student_journey) ? s.student_journey[0] : (s.student_journey || {});
     if (search) {
       const matchName = s.full_name?.toLowerCase().includes(search.toLowerCase());
       const matchId = s.student_id_number?.toLowerCase().includes(search.toLowerCase());
@@ -268,7 +271,7 @@ export function StudentJourneyPage() {
       {/* Filter and Students Pipeline List */}
       <Card>
         <CardHeader
-          title={`Daftar Siswa Pada Tahap: ${stages.find((s) => s.id === selectedPipelineStage)?.label}`}
+          title={`Daftar Siswa Pada Tahap: ${stages.find((s) => s.id === selectedPipelineStage)?.label || 'Semua Siswa'}`}
           subtitle="Pilih siswa untuk memeriksa detail atau memperbarui status spesifik"
         >
           <div style={{ width: '260px' }}>
@@ -292,7 +295,7 @@ export function StudentJourneyPage() {
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               {filteredStudents.map((student) => {
-                const j = student.student_journey || {};
+                const j = Array.isArray(student.student_journey) ? student.student_journey[0] : (student.student_journey || {});
                 const learningM = getLearningStatusMeta(j.learning_status);
                 const jobM = getJobSelectionMeta(j.job_selection_status);
                 const depM = getDepartureStatusMeta(j.departure_status);
