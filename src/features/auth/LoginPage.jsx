@@ -156,8 +156,9 @@ export function LoginPage() {
         flexDirection: 'column',
         justifyContent: 'center',
         alignItems: 'center',
-        padding: '24px 16px',
+        padding: '16px',
         position: 'relative',
+        overflowY: 'auto',
       }}
     >
       {/* Floating Theme Switcher */}
@@ -196,7 +197,7 @@ export function LoginPage() {
         </button>
       </div>
 
-      <div style={{ width: '100%', maxWidth: '380px' }}>
+      <div style={{ width: '100%', maxWidth: '360px' }}>
         {/* Supabase status warning if not yet configured */}
         {!isSupabaseConfigured && <SupabaseConfigAlert />}
 
@@ -231,27 +232,27 @@ export function LoginPage() {
             backgroundColor: 'var(--bg-surface)',
             border: '1px solid var(--border-default)',
             borderRadius: 'var(--radius-lg)',
-            padding: '24px 22px',
+            padding: '20px 20px',
             boxShadow: 'var(--shadow-md)',
           }}
         >
           {/* Header & Logo */}
-          <div style={{ textAlign: 'center', marginBottom: '16px' }}>
+          <div style={{ textAlign: 'center', marginBottom: '12px' }}>
             <img
               src="/logo.png"
               alt="Logo LPK BMU"
               style={{
-                width: '44px',
-                height: '44px',
+                width: '38px',
+                height: '38px',
                 objectFit: 'contain',
-                marginBottom: '8px',
+                marginBottom: '6px',
                 display: 'inline-block',
               }}
             />
-            <h1 style={{ fontSize: '1.125rem', fontWeight: '700', letterSpacing: '-0.02em', margin: 0 }}>
+            <h1 style={{ fontSize: '1rem', fontWeight: '700', letterSpacing: '-0.02em', margin: 0 }}>
               Student Hub BMU
             </h1>
-            <p style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', marginTop: '3px', marginBottom: 0 }}>
+            <p style={{ fontSize: '0.6875rem', color: 'var(--text-tertiary)', marginTop: '2px', marginBottom: 0 }}>
               Pangkalan Data Siswa &amp; Operasional LPK BMU
             </p>
           </div>
@@ -294,8 +295,8 @@ export function LoginPage() {
             style={{
               display: 'flex',
               alignItems: 'center',
-              margin: '16px 0 14px',
-              gap: '10px',
+              margin: '12px 0 10px',
+              gap: '8px',
             }}
           >
             <div style={{ flex: 1, height: '1px', backgroundColor: 'var(--border-subtle)' }} />
@@ -306,7 +307,7 @@ export function LoginPage() {
           </div>
 
           {/* Email / Password Form */}
-          <form onSubmit={handleEmailAuth} noValidate style={{ display: 'flex', flexDirection: 'column', gap: '11px' }}>
+          <form onSubmit={handleEmailAuth} noValidate style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             {isRegisterMode && (
               <Input
                 label="Nama Lengkap Staf"
@@ -375,7 +376,7 @@ export function LoginPage() {
               isLoading={isLoading}
               disabled={!isSupabaseConfigured}
               className="w-full"
-              style={{ width: '100%', height: '42px', marginTop: '4px' }}
+              style={{ width: '100%', height: '38px', marginTop: '2px' }}
               icon={isRegisterMode ? UserPlus : LogIn}
             >
               {isRegisterMode ? 'Daftar Akun Baru' : 'Masuk ke Student Hub'}
@@ -403,8 +404,8 @@ export function LoginPage() {
 
           <div
             style={{
-              marginTop: '24px',
-              paddingTop: '18px',
+              marginTop: '14px',
+              paddingTop: '12px',
               borderTop: '1px solid var(--border-subtle)',
               textAlign: 'center',
             }}
@@ -429,10 +430,10 @@ export function LoginPage() {
         {/* Security watermark */}
         <p
           style={{
-            fontSize: '0.75rem',
+            fontSize: '0.6875rem',
             color: 'var(--text-tertiary)',
             textAlign: 'center',
-            marginTop: '20px',
+            marginTop: '12px',
           }}
         >
           Sistem Akses Internal Khusus Tim BMU. Akses tanpa izin dilarang.
