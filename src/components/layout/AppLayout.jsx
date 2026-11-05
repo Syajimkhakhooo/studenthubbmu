@@ -2,13 +2,12 @@ import React, { useState } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
-import { MobileNav } from './MobileNav';
+import { BottomNav } from './BottomNav';
 import { useAuth } from '../../hooks/useAuth';
 import { SupabaseConfigAlert } from '../feedback/SupabaseConfigAlert';
 
 export function AppLayout() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const { isSupabaseConfigured } = useAuth();
   const location = useLocation();
 
@@ -34,17 +33,10 @@ export function AppLayout() {
         />
       </div>
 
-      {/* Mobile Drawer Navigation */}
-      <MobileNav
-        isOpen={isMobileNavOpen}
-        onClose={() => setIsMobileNavOpen(false)}
-      />
-
       {/* Main Content Area */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
         <Header
           pageTitle={getPageTitle(location.pathname)}
-          onOpenMobileNav={() => setIsMobileNavOpen(true)}
         />
 
         <main
@@ -66,6 +58,9 @@ export function AppLayout() {
             <Outlet />
           </div>
         </main>
+
+        {/* Mobile Bottom Navigation Bar */}
+        <BottomNav />
       </div>
     </div>
   );

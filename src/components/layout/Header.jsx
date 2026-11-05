@@ -7,7 +7,7 @@ import { CookiePolicyModal } from '../../features/auth/CookiePolicyModal';
 import { ConfirmModal } from '../feedback/ConfirmModal';
 import { Menu, LogOut, Shield, Database, Info, Sun, Moon } from 'lucide-react';
 
-export function Header({ onOpenMobileNav, pageTitle }) {
+export function Header({ pageTitle }) {
   const { profile, user, logout, isSupabaseConfigured } = useAuth();
   const { isDark, toggleTheme } = useTheme();
   const navigate = useNavigate();
@@ -32,26 +32,17 @@ export function Header({ onOpenMobileNav, pageTitle }) {
         zIndex: 50,
       }}
     >
-      {/* Left: Mobile hamburger & Page Title */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-        <button
-          type="button"
-          onClick={onOpenMobileNav}
+      {/* Left: Mobile Brand & Page Title */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <img
+          src="/logo.png"
+          alt="BMU"
           className="hide-on-desktop"
-          style={{
-            color: 'var(--text-secondary)',
-            padding: '6px',
-            borderRadius: 'var(--radius-sm)',
-            display: 'flex',
-            alignItems: 'center',
-          }}
-          aria-label="Buka Menu Navigasi"
-        >
-          <Menu size={20} />
-        </button>
+          style={{ width: '28px', height: '28px', objectFit: 'contain' }}
+        />
 
         {pageTitle && (
-          <h2 style={{ fontSize: '1.125rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+          <h2 style={{ fontSize: '1.0625rem', fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>
             {pageTitle}
           </h2>
         )}
