@@ -196,7 +196,7 @@ export function LoginPage() {
         </button>
       </div>
 
-      <div style={{ width: '100%', maxWidth: '440px' }}>
+      <div style={{ width: '100%', maxWidth: '380px' }}>
         {/* Supabase status warning if not yet configured */}
         {!isSupabaseConfigured && <SupabaseConfigAlert />}
 
@@ -204,23 +204,23 @@ export function LoginPage() {
         {maintenanceMode && (
           <div
             style={{
-              marginBottom: '16px',
-              padding: '14px 18px',
+              marginBottom: '14px',
+              padding: '12px 14px',
               backgroundColor: 'rgba(245, 158, 11, 0.1)',
               border: '1px solid rgba(245, 158, 11, 0.35)',
-              borderRadius: 'var(--radius-lg)',
+              borderRadius: 'var(--radius-md)',
               display: 'flex',
               alignItems: 'flex-start',
-              gap: '12px',
+              gap: '10px',
             }}
           >
-            <Wrench size={20} style={{ color: '#f59e0b', flexShrink: 0, marginTop: '2px' }} />
+            <Wrench size={18} style={{ color: '#f59e0b', flexShrink: 0, marginTop: '2px' }} />
             <div>
-              <strong style={{ fontSize: '0.875rem', color: 'var(--text-primary)', display: 'block' }}>
+              <strong style={{ fontSize: '0.8125rem', color: 'var(--text-primary)', display: 'block' }}>
                 Website Sedang Dalam Pemeliharaan
               </strong>
-              <span style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', marginTop: '2px', display: 'block', lineHeight: 1.4 }}>
-                Mohon kembali lagi nanti. Hanya akun <strong>Administrator</strong> yang diizinkan masuk untuk menginput data saat ini.
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '2px', display: 'block', lineHeight: 1.4 }}>
+                Hanya akun <strong>Administrator</strong> yang diizinkan masuk saat ini.
               </span>
             </div>
           </div>
@@ -230,28 +230,28 @@ export function LoginPage() {
           style={{
             backgroundColor: 'var(--bg-surface)',
             border: '1px solid var(--border-default)',
-            borderRadius: 'var(--radius-xl)',
-            padding: '36px 32px',
-            boxShadow: 'var(--shadow-lg)',
+            borderRadius: 'var(--radius-lg)',
+            padding: '24px 22px',
+            boxShadow: 'var(--shadow-md)',
           }}
         >
           {/* Header & Logo */}
-          <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+          <div style={{ textAlign: 'center', marginBottom: '16px' }}>
             <img
               src="/logo.png"
               alt="Logo LPK BMU"
               style={{
-                width: '56px',
-                height: '56px',
+                width: '44px',
+                height: '44px',
                 objectFit: 'contain',
-                marginBottom: '12px',
+                marginBottom: '8px',
                 display: 'inline-block',
               }}
             />
-            <h1 style={{ fontSize: '1.25rem', fontWeight: '700', letterSpacing: '-0.02em' }}>
+            <h1 style={{ fontSize: '1.125rem', fontWeight: '700', letterSpacing: '-0.02em', margin: 0 }}>
               Student Hub BMU
             </h1>
-            <p style={{ fontSize: '0.8125rem', color: 'var(--text-tertiary)', marginTop: '4px' }}>
+            <p style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', marginTop: '3px', marginBottom: 0 }}>
               Pangkalan Data Siswa &amp; Operasional LPK BMU
             </p>
           </div>
@@ -263,7 +263,7 @@ export function LoginPage() {
             disabled={isLoading || !isSupabaseConfigured}
             style={{
               width: '100%',
-              height: '46px',
+              height: '40px',
               backgroundColor: 'var(--bg-surface-elevated)',
               color: 'var(--text-primary)',
               border: '1px solid var(--border-default)',
@@ -271,22 +271,22 @@ export function LoginPage() {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              gap: '12px',
+              gap: '10px',
               fontWeight: 600,
-              fontSize: '0.875rem',
+              fontSize: '0.8125rem',
               cursor: isSupabaseConfigured ? 'pointer' : 'not-allowed',
               opacity: isSupabaseConfigured ? 1 : 0.6,
               transition: 'all var(--transition-fast)',
               boxShadow: 'var(--shadow-sm)',
             }}
           >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
               <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
               <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
               <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" fill="#FBBC05"/>
               <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" fill="#EA4335"/>
             </svg>
-            <span>{isLoading ? 'Menghubungkan ke Google...' : 'Masuk dengan Google'}</span>
+            <span>{isLoading ? 'Menghubungkan...' : 'Masuk dengan Google'}</span>
           </button>
 
           {/* Divider */}
@@ -294,19 +294,19 @@ export function LoginPage() {
             style={{
               display: 'flex',
               alignItems: 'center',
-              margin: '22px 0 18px',
-              gap: '12px',
+              margin: '16px 0 14px',
+              gap: '10px',
             }}
           >
             <div style={{ flex: 1, height: '1px', backgroundColor: 'var(--border-subtle)' }} />
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', fontWeight: 500 }}>
+            <span style={{ fontSize: '0.6875rem', color: 'var(--text-tertiary)', fontWeight: 500 }}>
               atau masuk dengan email
             </span>
             <div style={{ flex: 1, height: '1px', backgroundColor: 'var(--border-subtle)' }} />
           </div>
 
           {/* Email / Password Form */}
-          <form onSubmit={handleEmailAuth} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          <form onSubmit={handleEmailAuth} noValidate style={{ display: 'flex', flexDirection: 'column', gap: '11px' }}>
             {isRegisterMode && (
               <Input
                 label="Nama Lengkap Staf"
