@@ -14,8 +14,8 @@ export function BottomNav() {
   const { isAdmin, isPrincipal, isViewer } = useAuth();
 
   const navItems = [
-    { to: '/dashboard', label: 'Beranda', icon: LayoutDashboard },
-    { to: '/students', label: 'Siswa', icon: Users },
+    { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { to: '/students', label: 'Data Siswa', icon: Users },
   ];
 
   // Dokumen Siswa only visible to non-viewer
@@ -41,7 +41,7 @@ export function BottomNav() {
         flexShrink: 0,
         backgroundColor: 'var(--bg-surface)',
         borderTop: '1px solid var(--border-subtle)',
-        boxShadow: '0 -2px 10px rgba(0, 0, 0, 0.04)',
+        boxShadow: 'var(--shadow-sm)',
         paddingBottom: 'env(safe-area-inset-bottom, 0px)',
         zIndex: 90,
       }}
@@ -50,11 +50,12 @@ export function BottomNav() {
         style={{
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'space-around',
-          height: '56px',
+          justifyContent: 'space-between',
+          height: '60px',
           maxWidth: '560px',
           margin: '0 auto',
-          padding: '0 2px',
+          padding: '4px 6px',
+          gap: '4px',
         }}
       >
         {navItems.map((item) => {
@@ -70,45 +71,32 @@ export function BottomNav() {
                 flexDirection: 'column',
                 alignItems: 'center',
                 justifyContent: 'center',
-                gap: '2px',
+                gap: '3px',
                 padding: '6px 2px',
+                borderRadius: 'var(--radius-md)',
                 textDecoration: 'none',
-                color: isActive ? 'var(--color-primary-500, #4f46e5)' : 'var(--text-tertiary)',
-                transition: 'all var(--transition-fast)',
-                position: 'relative',
+                color: isActive ? 'var(--text-primary)' : 'var(--text-secondary)',
+                backgroundColor: isActive ? 'var(--bg-surface-elevated)' : 'transparent',
+                border: isActive ? '1px solid var(--border-default)' : '1px solid transparent',
+                fontWeight: isActive ? 600 : 500,
+                boxShadow: isActive ? 'var(--shadow-sm)' : 'none',
+                transition: 'all 200ms cubic-bezier(0.4, 0, 0.2, 1)',
               })}
             >
               {({ isActive }) => (
                 <>
-                  {isActive && (
-                    <span
-                      style={{
-                        position: 'absolute',
-                        top: 0,
-                        width: '24px',
-                        height: '3px',
-                        borderRadius: '0 0 3px 3px',
-                        backgroundColor: 'var(--color-primary-500, #4f46e5)',
-                      }}
-                    />
-                  )}
-                  <div
+                  <Icon
+                    size={18}
+                    strokeWidth={isActive ? 2.2 : 1.8}
                     style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      padding: '2px 10px',
-                      borderRadius: 'var(--radius-full)',
-                      backgroundColor: isActive ? 'rgba(79, 70, 229, 0.12)' : 'transparent',
-                      transition: 'background-color var(--transition-fast)',
+                      flexShrink: 0,
+                      transition: 'transform 200ms ease',
+                      transform: isActive ? 'scale(1.05)' : 'scale(1)',
                     }}
-                  >
-                    <Icon size={18} strokeWidth={isActive ? 2.5 : 1.8} />
-                  </div>
+                  />
                   <span
                     style={{
                       fontSize: '0.65rem',
-                      fontWeight: isActive ? 600 : 500,
                       lineHeight: 1.1,
                       whiteSpace: 'nowrap',
                       overflow: 'hidden',
