@@ -6,6 +6,7 @@ import { LandingPage } from '../features/landing/LandingPage';
 import { LoginPage } from '../features/auth/LoginPage';
 import { AuthCallback } from '../features/auth/AuthCallback';
 import { AccessDeniedPage } from '../features/auth/AccessDeniedPage';
+import { ResetPasswordPage } from '../features/auth/ResetPasswordPage';
 import { DashboardPage } from '../features/dashboard/DashboardPage';
 import { StudentListPage } from '../features/students/StudentListPage';
 import { StudentDetailPage } from '../features/students/StudentDetailPage';
@@ -21,6 +22,7 @@ export function AppRouter() {
       <Route path="/" element={<LandingPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/auth/callback" element={<AuthCallback />} />
+      <Route path="/auth/reset-password" element={<ResetPasswordPage />} />
       <Route path="/access-denied" element={<AccessDeniedPage />} />
 
       {/* Protected App Routes wrapped in AppLayout and AuthGuard */}
