@@ -60,24 +60,27 @@ export function StudentImportModal({ isOpen, onClose, onSuccess }) {
    *   - Text cells typed manually → plain string (handled by string branches below)
    */
   const parseDateValue = (raw) => {
-    if (!raw) return null;
+    if (raw === undefined || raw === null || raw === '') return null;
 
-    // 1. JS Date object (from cellDates:true + raw:true)
+    // 1. JS Date object (from SheetJS cellDates:true)
     if (raw instanceof Date) {
       if (isNaN(raw.getTime())) return null;
-      // Use local date parts to avoid UTC timezone shift
       const y = raw.getFullYear();
       const m = String(raw.getMonth() + 1).padStart(2, '0');
       const d = String(raw.getDate()).padStart(2, '0');
       return `${y}-${m}-${d}`;
     }
 
-    // 2. Excel serial number (date stored as number without Date formatting)
+    // 2. Year only as number (e.g. 2023, 2024, 2025)
+    if (typeof raw === 'number' && raw >= 1970 && raw <= 2100) {
+      return `${Math.round(raw)}-01-01`;
+    }
+
+    // 3. Excel serial number (e.g. 45352 -> 2024-03-01)
     if (typeof raw === 'number') {
       try {
-        // Excel epoch: 1899-12-30 (accounting for the Lotus 1-2-3 leap year bug)
         const excelEpoch = new Date(Date.UTC(1899, 11, 30));
-        const dateObj = new Date(excelEpoch.getTime() + raw * 86400000);
+        const dateObj = new Date(excelEpoch.getTime() + Math.round(raw) * 86400000);
         if (!isNaN(dateObj.getTime())) {
           const y = dateObj.getUTCFullYear();
           const m = String(dateObj.getUTCMonth() + 1).padStart(2, '0');
@@ -90,30 +93,109 @@ export function StudentImportModal({ isOpen, onClose, onSuccess }) {
     }
 
     const str = String(raw).trim();
+    if (!str) return null;
 
-    // 3. ISO format: YYYY-MM-DD (exact match, return as-is)
-    if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
+    // 4. Pure year in string format: "2024", "2025"
+    if (/^(19\d{2}|20\d{2})$/.test(str)) {
+      return `${str}-01-01`;
+    }
 
-    // 4. Indonesian format: DD/MM/YYYY or DD-MM-YYYY
-    //    Rule: if first number <= 31 and second number <= 12, treat as DD/MM
-    const parts = str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
-    if (parts) {
-      const n1 = parseInt(parts[1], 10);
-      const n2 = parseInt(parts[2], 10);
-      const year = parts[3];
-      // Disambiguate: if first part > 12 it must be a day (DD/MM/YYYY)
-      // If first part <= 12 we assume Indonesian DD/MM/YYYY (most common in BMU)
-      const day = String(n1).padStart(2, '0');
-      const month = String(n2).padStart(2, '0');
-      // Sanity check: month must be 1-12, day must be 1-31
-      if (n2 >= 1 && n2 <= 12 && n1 >= 1 && n1 <= 31) {
-        return `${year}-${month}-${day}`;
+    // 5. Excel serial number stored as text (e.g. "45352")
+    if (/^\d{5}$/.test(str)) {
+      const num = parseInt(str, 10);
+      if (num >= 25000 && num <= 75000) {
+        const excelEpoch = new Date(Date.UTC(1899, 11, 30));
+        const dateObj = new Date(excelEpoch.getTime() + num * 86400000);
+        if (!isNaN(dateObj.getTime())) {
+          const y = dateObj.getUTCFullYear();
+          const m = String(dateObj.getUTCMonth() + 1).padStart(2, '0');
+          const d = String(dateObj.getUTCDate()).padStart(2, '0');
+          return `${y}-${m}-${d}`;
+        }
       }
     }
 
-    // 5. Last resort: native Date parse (handles "1 Jan 2024", "Jan 2024" etc.)
+    // 6. ISO-like format: YYYY-MM-DD or YYYY/MM/DD or YYYY.MM.DD (with optional time)
+    const isoMatch = str.match(/^(\d{4})[\/\-. ](\d{1,2})[\/\-. ](\d{1,2})/);
+    if (isoMatch) {
+      const y = isoMatch[1];
+      const m = isoMatch[2].padStart(2, '0');
+      const d = isoMatch[3].padStart(2, '0');
+      const monthNum = parseInt(m, 10);
+      const dayNum = parseInt(d, 10);
+      if (monthNum >= 1 && monthNum <= 12 && dayNum >= 1 && dayNum <= 31) {
+        return `${y}-${m}-${d}`;
+      }
+    }
+
+    // 7. Indonesian / European format: DD/MM/YYYY, DD-MM-YYYY, DD.MM.YYYY, DD/MM/YY (with optional time)
+    const dmyMatch = str.match(/^(\d{1,2})[\/\-. ](\d{1,2})[\/\-. ](\d{2,4})/);
+    if (dmyMatch) {
+      const d = dmyMatch[1].padStart(2, '0');
+      const m = dmyMatch[2].padStart(2, '0');
+      let y = dmyMatch[3];
+      if (y.length === 2) {
+        const yy = parseInt(y, 10);
+        y = yy > 50 ? `19${y}` : `20${y}`;
+      }
+      const dayNum = parseInt(d, 10);
+      const monthNum = parseInt(m, 10);
+      if (monthNum >= 1 && monthNum <= 12 && dayNum >= 1 && dayNum <= 31) {
+        return `${y}-${m}-${d}`;
+      }
+    }
+
+    // 8. Text with month names (Indonesian & English, e.g. "3 Nov 2024", "03 November 2024", "15 Ags 2023", "12-Mei-2022")
+    const MONTH_DICT = {
+      jan: '01', januari: '01', january: '01',
+      feb: '02', februari: '02', february: '02',
+      mar: '03', maret: '03', march: '03',
+      apr: '04', april: '04',
+      mei: '05', may: '05',
+      jun: '06', juni: '06', june: '06',
+      jul: '07', juli: '07', july: '07',
+      agu: '08', ags: '08', agustus: '08', aug: '08', august: '08',
+      sep: '09', september: '09',
+      okt: '10', oktober: '10', oct: '10', october: '10',
+      nov: '11', nop: '11', november: '11', nopember: '11',
+      des: '12', desember: '12', dec: '12', december: '12',
+    };
+
+    // Try: Day Month Year (e.g. "3 November 2024" or "03-Nov-2024")
+    const textDmy = str.match(/(\d{1,2})?\s*[\/\-. ]?\s*([a-zA-Z]{3,})\s*[\/\-. ]?\s*(\d{2,4})/);
+    if (textDmy) {
+      const day = (textDmy[1] || '01').padStart(2, '0');
+      const monthStr = textDmy[2].toLowerCase();
+      let year = textDmy[3];
+      if (year.length === 2) {
+        const yy = parseInt(year, 10);
+        year = yy > 50 ? `19${year}` : `20${year}`;
+      }
+      const foundMonth = MONTH_DICT[monthStr] || MONTH_DICT[monthStr.slice(0, 3)];
+      if (foundMonth) {
+        return `${year}-${foundMonth}-${day}`;
+      }
+    }
+
+    // Try: Month Day Year (e.g. "Nov 3, 2024")
+    const textMdy = str.match(/([a-zA-Z]{3,})\s*[\/\-. ]?\s*(\d{1,2}),?\s*(\d{2,4})/);
+    if (textMdy) {
+      const monthStr = textMdy[1].toLowerCase();
+      const day = textMdy[2].padStart(2, '0');
+      let year = textMdy[3];
+      if (year.length === 2) {
+        const yy = parseInt(year, 10);
+        year = yy > 50 ? `19${year}` : `20${year}`;
+      }
+      const foundMonth = MONTH_DICT[monthStr] || MONTH_DICT[monthStr.slice(0, 3)];
+      if (foundMonth) {
+        return `${year}-${foundMonth}-${day}`;
+      }
+    }
+
+    // 9. Native Date parse fallback
     const native = new Date(str);
-    if (!isNaN(native.getTime()) && str.length >= 8) {
+    if (!isNaN(native.getTime()) && str.length >= 6) {
       const y = native.getFullYear();
       const m = String(native.getMonth() + 1).padStart(2, '0');
       const d = String(native.getDate()).padStart(2, '0');
@@ -226,11 +308,85 @@ export function StudentImportModal({ isOpen, onClose, onSuccess }) {
         'SSW';
       const programType = parseProgramType(programRaw);
 
-      const birthPlace = String(normalizedRow.tempatlahir || normalizedRow.birthplace || '').trim();
-      const birthDate = parseDateValue(normalizedRow.tanggallahir || normalizedRow.tgllahir || normalizedRow.birthdate);
-      const entryDate =
-        parseDateValue(normalizedRow.tanggalmasuk || normalizedRow.tglmasuk || normalizedRow.entrydate) ||
-        new Date().toISOString().split('T')[0];
+      let birthPlace = String(
+        normalizedRow.tempatlahir ||
+        normalizedRow.birthplace ||
+        normalizedRow.tempat ||
+        ''
+      ).trim();
+
+      let birthDateRaw =
+        normalizedRow.tanggallahir ??
+        normalizedRow.tgllahir ??
+        normalizedRow.birthdate ??
+        normalizedRow.tgllahirsiswa ??
+        normalizedRow.tanggallahirsiswa ??
+        normalizedRow.lahir;
+
+      // Handle combined TTL e.g. "Cirebon, 12-05-2002" or "Banyumas, 14 Mei 2002"
+      if (!birthDateRaw && (normalizedRow.ttl || normalizedRow.tempattanggallahir)) {
+        const ttlStr = String(normalizedRow.ttl || normalizedRow.tempattanggallahir);
+        if (ttlStr.includes(',')) {
+          const parts = ttlStr.split(',');
+          if (!birthPlace) birthPlace = parts[0].trim();
+          birthDateRaw = parts.slice(1).join(',').trim();
+        } else {
+          birthDateRaw = ttlStr;
+        }
+      }
+      const birthDate = parseDateValue(birthDateRaw);
+
+      // Smart Tanggal Masuk resolver: checks all common aliases + fuzzy scan
+      const entryDateCandidate =
+        normalizedRow.tanggalmasuk ??
+        normalizedRow.tglmasuk ??
+        normalizedRow.entrydate ??
+        normalizedRow.tglmasuksiswa ??
+        normalizedRow.tanggalmasuksiswa ??
+        normalizedRow.tglmasukbmu ??
+        normalizedRow.tanggalmasukbmu ??
+        normalizedRow.masuk ??
+        normalizedRow.tglmasuklpk ??
+        normalizedRow.tanggalmasuklpk ??
+        normalizedRow.tglpendaftaran ??
+        normalizedRow.tanggalpendaftaran ??
+        normalizedRow.tgldaftar ??
+        normalizedRow.tanggaldaftar ??
+        normalizedRow.tglregistrasi ??
+        normalizedRow.tanggalregistrasi ??
+        normalizedRow.tglbergabung ??
+        normalizedRow.tanggalbergabung ??
+        normalizedRow.bergabung ??
+        normalizedRow.tahunmasuk ??
+        normalizedRow.thnmasuk ??
+        normalizedRow.angkatan ??
+        normalizedRow.tglmulai ??
+        normalizedRow.tanggalmulai ??
+        normalizedRow.admissiondate ??
+        normalizedRow.registrationdate;
+
+      let resolvedEntryDateRaw = entryDateCandidate;
+      if (resolvedEntryDateRaw === undefined) {
+        // Fuzzy key fallback: look for any header containing 'masuk', 'daftar', 'entry', 'admission', 'bergabung'
+        const matchingKey = Object.keys(normalizedRow).find((k) => {
+          return (
+            (k.includes('masuk') || k.includes('entry') || k.includes('daftar') || k.includes('admission') || k.includes('bergabung')) &&
+            !k.includes('keluar') &&
+            !k.includes('lahir') &&
+            !k.includes('birth') &&
+            !k.includes('update')
+          );
+        });
+        if (matchingKey) {
+          resolvedEntryDateRaw = normalizedRow[matchingKey];
+        }
+      }
+
+      const parsedEntryDate = parseDateValue(resolvedEntryDateRaw);
+      const entryDate = parsedEntryDate || new Date().toISOString().split('T')[0];
+
+      const kelasRaw = String(normalizedRow.kelas || normalizedRow.rombel || normalizedRow.kelasbmu || '').trim();
+      const kelas = kelasRaw || null;
 
       const religion = String(normalizedRow.agama || normalizedRow.religion || 'Islam').trim();
       const bloodType = String(normalizedRow.golongandarah || normalizedRow.goldarah || normalizedRow.bloodtype || '').trim().toUpperCase();
@@ -308,6 +464,7 @@ export function StudentImportModal({ isOpen, onClose, onSuccess }) {
         emergency_contact_name: emergencyContactName || null,
         emergency_contact_relation: emergencyContactRelation || null,
         emergency_contact_phone: emergencyContactPhone || null,
+        kelas: kelas,
         notes: notes || null,
         errors,
         isValid: errors.length === 0,
@@ -816,11 +973,12 @@ export function StudentImportModal({ isOpen, onClose, onSuccess }) {
                 <thead>
                   <tr style={{ backgroundColor: 'var(--bg-surface-elevated)', borderBottom: '1px solid var(--border-default)', textAlign: 'left', position: 'sticky', top: 0, zIndex: 1 }}>
                     <th style={{ padding: '8px 10px', width: '50px' }}>Baris</th>
-                    <th style={{ padding: '8px 10px', width: '110px' }}>Status</th>
+                    <th style={{ padding: '8px 10px', width: '100px' }}>Status</th>
                     <th style={{ padding: '8px 10px' }}>NIS</th>
                     <th style={{ padding: '8px 10px' }}>Nama Lengkap</th>
-                    <th style={{ padding: '8px 10px', width: '60px' }}>L/P</th>
+                    <th style={{ padding: '8px 10px', width: '50px' }}>L/P</th>
                     <th style={{ padding: '8px 10px' }}>Program</th>
+                    <th style={{ padding: '8px 10px' }}>Tgl Masuk</th>
                     <th style={{ padding: '8px 10px' }}>No. HP</th>
                     <th style={{ padding: '8px 10px' }}>Keterangan / Masalah</th>
                   </tr>
@@ -828,7 +986,7 @@ export function StudentImportModal({ isOpen, onClose, onSuccess }) {
                 <tbody>
                   {displayedRows.length === 0 ? (
                     <tr>
-                      <td colSpan={8} style={{ textAlign: 'center', padding: '24px', color: 'var(--text-tertiary)' }}>
+                      <td colSpan={9} style={{ textAlign: 'center', padding: '24px', color: 'var(--text-tertiary)' }}>
                         Tidak ada baris data pada filter ini.
                       </td>
                     </tr>
@@ -862,6 +1020,9 @@ export function StudentImportModal({ isOpen, onClose, onSuccess }) {
                         </td>
                         <td style={{ padding: '8px 10px' }}>
                           {row.program_type}
+                        </td>
+                        <td style={{ padding: '8px 10px', color: 'var(--text-primary)', fontWeight: 500 }}>
+                          {row.entry_date || '-'}
                         </td>
                         <td style={{ padding: '8px 10px', color: 'var(--text-secondary)' }}>
                           {row.phone_number || '-'}
