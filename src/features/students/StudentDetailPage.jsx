@@ -40,6 +40,7 @@ export function StudentDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { profile } = useAuth();
+  const isViewer = profile?.role === 'viewer';
   const { error: toastError } = useToast();
 
   const [student, setStudent] = useState(null);
@@ -86,9 +87,9 @@ export function StudentDetailPage() {
     { id: 'pengalaman', label: '4. Pengalaman Kerja', icon: Briefcase, count: student.work_experiences?.length },
     { id: 'personal', label: '5. Profil Fisik', icon: Activity },
     { id: 'keluarga', label: '6. Keluarga', icon: Users, count: student.family_members?.length },
-    { id: 'dokumen', label: '7. Dokumen', icon: FileCheck2 },
+    ...(!isViewer ? [{ id: 'dokumen', label: '7. Dokumen', icon: FileCheck2 }] : []),
     { id: 'status', label: '8. Status & Riwayat', icon: Route },
-    { id: 'finansial', label: '9. Administrasi Biaya', icon: DollarSign },
+    ...(!isViewer ? [{ id: 'finansial', label: '9. Administrasi Biaya', icon: DollarSign }] : []),
   ];
 
   const learningMeta = getLearningStatusMeta(student.student_journey?.learning_status);
@@ -144,16 +145,18 @@ export function StudentDetailPage() {
             </div>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Button
-              variant="secondary"
-              size="sm"
-              icon={Edit2}
-              onClick={() => setIsEditModalOpen(true)}
-            >
-              Edit Data Pokok
-            </Button>
-          </div>
+          {!isViewer && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Button
+                variant="secondary"
+                size="sm"
+                icon={Edit2}
+                onClick={() => setIsEditModalOpen(true)}
+              >
+                Edit Data Pokok
+              </Button>
+            </div>
+          )}
         </div>
 
         {/* Current Pipeline Status Pills */}

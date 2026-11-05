@@ -45,6 +45,7 @@ export function StudentListPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { profile } = useAuth();
+  const isViewer = profile?.role === 'viewer';
   const { success, error: toastError } = useToast();
 
   const [activeTab, setActiveTab] = useState(
@@ -94,10 +95,42 @@ export function StudentListPage() {
     }
     if (filterParam.startsWith('departure_')) {
       const val = filterParam.replace('departure_', '');
+      if (val === 'sudah' || val === 'sudah_berangkat') {
+        return { type: 'departureStatus', value: 'sudah_berangkat', label: 'Status Keberangkatan: Sudah di Jepang' };
+      }
+      if (val === 'ready' || val === 'siap') {
+        return { type: 'departureReadiness', value: 'siap', label: 'Kesiapan Keberangkatan: Siap Berangkat' };
+      }
+      if (val === 'menunggu_kontrak') {
+        return { type: 'departureReadiness', value: 'menunggu_kontrak', label: 'Kesiapan Keberangkatan: Menunggu Kontrak' };
+      }
+      if (val === 'menunggu_coe') {
+        return { type: 'departureReadiness', value: 'menunggu_coe', label: 'Kesiapan Keberangkatan: Sedang Menunggu COE' };
+      }
       return { type: 'departureReadiness', value: val, label: 'Kesiapan Keberangkatan: ' + val.replace(/_/g, ' ') };
     }
     return { type: 'custom', value: filterParam, label: filterParam.replace(/_/g, ' ') };
   }, [filterParam]);
+
+  // Synchronize state when URL query params change (e.g. from Dashboard or navigation)
+  useEffect(() => {
+    const prog = searchParams.get('program') || '';
+    const q = searchParams.get('q') || '';
+    const f = searchParams.get('filter') || '';
+    setSelectedProgram(prog);
+    setSearchQuery(q);
+    if (f.startsWith('learning_')) {
+      setSelectedLearningStatus(f.replace('learning_', ''));
+    } else {
+      setSelectedLearningStatus('');
+    }
+    if (f.startsWith('job_')) {
+      setSelectedJobStatus(f.replace('job_', ''));
+    } else {
+      setSelectedJobStatus('');
+    }
+    setCurrentPage(1);
+  }, [searchParams]);
 
   // Modals state
   const [showAddModal, setShowAddModal] = useState(searchParams.get('action') === 'add');
@@ -393,21 +426,25 @@ export function StudentListPage() {
             onClick={() => navigate(`/students/${row.id}`)}
             title="Lihat Profil Lengkap"
           />
-          <Button
-            variant="ghost"
-            size="sm"
-            icon={Edit2}
-            onClick={() => setEditingStudent(row)}
-            title="Edit Data Siswa"
-          />
-          <Button
-            variant="ghost"
-            size="sm"
-            icon={Trash2}
-            onClick={() => setArchiveTarget(row)}
-            title="Pindahkan ke Tong Sampah"
-            style={{ color: 'var(--text-tertiary)' }}
-          />
+          {!isViewer && (
+            <>
+              <Button
+                variant="ghost"
+                size="sm"
+                icon={Edit2}
+                onClick={() => setEditingStudent(row)}
+                title="Edit Data Siswa"
+              />
+              <Button
+                variant="ghost"
+                size="sm"
+                icon={Trash2}
+                onClick={() => setArchiveTarget(row)}
+                title="Pindahkan ke Tong Sampah"
+                style={{ color: 'var(--text-tertiary)' }}
+              />
+            </>
+          )}
         </div>
       ),
     },
@@ -544,30 +581,34 @@ export function StudentListPage() {
               <Button variant="secondary" icon={Filter} onClick={() => navigate('/reports')}>
                 Data Explorer
               </Button>
-              <Button
-                variant="secondary"
-                icon={FileSpreadsheet}
-                onClick={() => setShowImportModal(true)}
-                title="Import banyak data siswa sekaligus dari file Excel atau CSV"
-              >
-                Import Excel
-              </Button>
-              <Button
-                variant="outline"
-                icon={AlertTriangle}
-                onClick={() => setShowDeleteAllConfirm(true)}
-                disabled={totalCount === 0}
-                style={{
-                  color: '#ef4444',
-                  borderColor: 'rgba(239,68,68,0.4)',
-                }}
-                title="Hapus permanen SEMUA data siswa aktif"
-              >
-                Hapus Semua Data
-              </Button>
-              <Button variant="primary" icon={UserPlus} onClick={() => setShowAddModal(true)}>
-                Tambah Siswa Baru
-              </Button>
+              {!isViewer && (
+                <>
+                  <Button
+                    variant="secondary"
+                    icon={FileSpreadsheet}
+                    onClick={() => setShowImportModal(true)}
+                    title="Import banyak data siswa sekaligus dari file Excel atau CSV"
+                  >
+                    Import Excel
+                  </Button>
+                  <Button
+                    variant="outline"
+                    icon={AlertTriangle}
+                    onClick={() => setShowDeleteAllConfirm(true)}
+                    disabled={totalCount === 0}
+                    style={{
+                      color: '#ef4444',
+                      borderColor: 'rgba(239,68,68,0.4)',
+                    }}
+                    title="Hapus permanen SEMUA data siswa aktif"
+                  >
+                    Hapus Semua Data
+                  </Button>
+                  <Button variant="primary" icon={UserPlus} onClick={() => setShowAddModal(true)}>
+                    Tambah Siswa Baru
+                  </Button>
+                </>
+              )}
             </>
           )}
         </div>

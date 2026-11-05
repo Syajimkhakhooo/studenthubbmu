@@ -34,8 +34,16 @@ export function AppRouter() {
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/students" element={<StudentListPage />} />
         <Route path="/students/:id" element={<StudentDetailPage />} />
-        <Route path="/documents" element={<DocumentHubPage />} />
+        <Route
+          path="/documents"
+          element={
+            <AuthGuard allowedRoles={['admin', 'operational_manager', 'principal', 'sensei_staff']}>
+              <DocumentHubPage />
+            </AuthGuard>
+          }
+        />
         <Route path="/journey" element={<StudentJourneyPage />} />
+        <Route path="/student-journey" element={<StudentJourneyPage />} />
         <Route path="/journeys" element={<Navigate to="/journey" replace />} />
         <Route path="/reports" element={<ReportsExplorerPage />} />
         <Route

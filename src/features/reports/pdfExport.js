@@ -6,6 +6,7 @@ import {
   getLearningStatusMeta,
   getJobSelectionMeta,
   getDepartureStatusMeta,
+  getDepartureReadinessMeta,
   getStudentSswField,
   formatCertificationLabel,
 } from '../../utils/formatters';
@@ -18,7 +19,7 @@ export function generateStudentReportPdf({
   students = [],
   filterSummary = '',
   orientation = 'portrait', // 'portrait' | 'landscape'
-  selectedColumns = ['student_id', 'name', 'gender', 'age', 'height', 'program', 'job_interest', 'learning_status', 'selection_status', 'certs'],
+  selectedColumns = ['student_id', 'name', 'gender', 'age', 'height', 'kelas', 'program', 'job_interest', 'learning_status', 'selection_status', 'certs'],
   reportTitle = 'LAPORAN REKAPITULASI DATA SISWA',
 }) {
   const doc = new jsPDF({
@@ -30,29 +31,40 @@ export function generateStudentReportPdf({
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
   const margin = 14;
+  const centerX = pageWidth / 2;
 
-  // 1. Header / Letterhead
+  // ─────────────────────────────────────────────────────────────
+  // 1. Header / Letterhead — fully centered
+  // ─────────────────────────────────────────────────────────────
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(13);
   doc.setTextColor(20, 20, 20);
-  doc.text('LPK BAHTERA MITRA UNGGULAN (BMU)', margin, 15);
+  doc.text('LPK BAHTERA MITRA UNGGULAN (BMU)', centerX, 15, { align: 'center' });
 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(8.5);
   doc.setTextColor(80, 80, 80);
-  doc.text('Sistem Informasi & Pangkalan Data Siswa — Student Hub BMU', margin, 20);
+  doc.text('Sistem Informasi & Pangkalan Data Siswa — Student Hub BMU', centerX, 20, { align: 'center' });
 
   // Divider line
   doc.setDrawColor(200, 200, 200);
   doc.setLineWidth(0.4);
   doc.line(margin, 23, pageWidth - margin, 23);
 
-  // 2. Report Title & Metadata
+  // 2. Report Title — centered
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(11);
   doc.setTextColor(15, 15, 15);
-  doc.text(reportTitle.toUpperCase(), margin, 29);
+  doc.text(reportTitle.toUpperCase(), centerX, 29, { align: 'center' });
 
+  // Thin underline under title
+  const titleWidth = doc.getTextWidth(reportTitle.toUpperCase());
+  const titleX = centerX - titleWidth / 2;
+  doc.setDrawColor(180, 180, 180);
+  doc.setLineWidth(0.2);
+  doc.line(titleX, 30.5, titleX + titleWidth, 30.5);
+
+  // 3. Print date & total — centered
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(8);
   doc.setTextColor(100, 100, 100);
@@ -63,19 +75,27 @@ export function generateStudentReportPdf({
     hour: '2-digit',
     minute: '2-digit',
   });
-  doc.text(`Waktu Cetak: ${printDate} WIB  |  Total Hasil: ${students.length} Siswa`, margin, 34);
+  doc.text(`Waktu Cetak: ${printDate} WIB  |  Total Hasil: ${students.length} Siswa`, centerX, 35, { align: 'center' });
 
-  let currentY = 38;
+  let currentY = 40;
   if (filterSummary) {
     doc.setFont('helvetica', 'italic');
     doc.setFontSize(7.5);
     doc.setTextColor(90, 90, 90);
     const filterTextLines = doc.splitTextToSize(`Filter Diterapkan: ${filterSummary}`, pageWidth - (margin * 2));
-    doc.text(filterTextLines, margin, currentY);
+    doc.text(filterTextLines, centerX, currentY, { align: 'center' });
     currentY += (filterTextLines.length * 3.5) + 2;
   }
 
-  // 3. Prepare Table Columns and Rows
+  // Divider before table
+  doc.setDrawColor(220, 220, 220);
+  doc.setLineWidth(0.3);
+  doc.line(margin, currentY, pageWidth - margin, currentY);
+  currentY += 3;
+
+  // ─────────────────────────────────────────────────────────────
+  // 4. Prepare Table Columns and Rows
+  // ─────────────────────────────────────────────────────────────
   const columnDefs = {
     student_id: { header: 'NO. ID SISWA', dataKey: 'student_id_number' },
     name: { header: 'NAMA LENGKAP', dataKey: 'full_name' },
@@ -83,12 +103,14 @@ export function generateStudentReportPdf({
     age: { header: 'USIA', dataKey: 'age' },
     height: { header: 'TB (CM)', dataKey: 'height_cm' },
     weight: { header: 'BB (KG)', dataKey: 'weight_kg' },
+    kelas: { header: 'KELAS', dataKey: 'kelas' },
     program: { header: 'PROGRAM', dataKey: 'program_type' },
     ssw_field: { header: 'BIDANG SSW & BAHASA', dataKey: 'ssw_field' },
     job_interest: { header: 'BIDANG MINAT', dataKey: 'target_job_interest' },
     entry_date: { header: 'TGL MASUK', dataKey: 'entry_date' },
     learning_status: { header: 'STATUS BELAJAR', dataKey: 'learning_status' },
     selection_status: { header: 'STATUS SELEKSI', dataKey: 'job_selection_status' },
+    departure_readiness: { header: 'KESIAPAN BERANGKAT', dataKey: 'departure_readiness' },
     departure_status: { header: 'KEBERANGKATAN', dataKey: 'departure_status' },
     certs: { header: 'SERTIFIKASI & BAHASA', dataKey: 'certs' },
   };
@@ -119,6 +141,9 @@ export function generateStudentReportPdf({
         case 'weight':
           row.push(s.weight_kg ? `${s.weight_kg}` : '-');
           break;
+        case 'kelas':
+          row.push(s.kelas ? (s.kelas === 'Pemula' ? 'Pemula' : `Kelas ${s.kelas}`) : '-');
+          break;
         case 'program': {
           if (s.program_type === 'SSW') {
             row.push('Tokutei Ginou (SSW)');
@@ -127,11 +152,6 @@ export function generateStudentReportPdf({
           } else {
             row.push(s.program_type || '-');
           }
-          break;
-        }
-        case 'ssw_field': {
-          const sswField = getStudentSswField(s);
-          row.push(sswField || '-');
           break;
         }
         case 'job_interest':
@@ -146,12 +166,21 @@ export function generateStudentReportPdf({
         case 'selection_status':
           row.push(getJobSelectionMeta(s.student_journey?.job_selection_status).label);
           break;
+        case 'departure_readiness':
+          row.push(getDepartureReadinessMeta(s.student_journey?.departure_readiness).label);
+          break;
         case 'departure_status':
           row.push(getDepartureStatusMeta(s.student_journey?.departure_status).label);
           break;
+        case 'ssw_field':
         case 'certs': {
-          const certLabels = (s.certifications || []).map((c) => formatCertificationLabel(c));
-          row.push(certLabels.length > 0 ? certLabels.join(', ') : '-');
+          const sswField = getStudentSswField(s);
+          if (sswField) {
+            row.push(sswField);
+          } else {
+            const certLabels = (s.certifications || []).map((c) => formatCertificationLabel(c)).filter(Boolean);
+            row.push(certLabels.length > 0 ? certLabels.join(', ') : '-');
+          }
           break;
         }
         default:
@@ -161,7 +190,9 @@ export function generateStudentReportPdf({
     return row;
   });
 
-  // 4. Draw Table with autoTable
+  // ─────────────────────────────────────────────────────────────
+  // 5. Draw Table with autoTable
+  // ─────────────────────────────────────────────────────────────
   autoTable(doc, {
     head: [activeHeaders],
     body: tableRows,
@@ -180,13 +211,13 @@ export function generateStudentReportPdf({
       textColor: [245, 245, 245],
       fontStyle: 'bold',
       fontSize: 7,
-      halign: 'left',
+      halign: 'center',
     },
     alternateRowStyles: {
       fillColor: [248, 249, 250],
     },
     didDrawPage: (data) => {
-      // 5. Footer with page numbering and confidentiality disclaimer
+      // 6. Footer with page numbering and confidentiality disclaimer
       const pageNumber = doc.internal.getNumberOfPages();
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(7);
@@ -205,7 +236,7 @@ export function generateStudentReportPdf({
     },
   });
 
-  // 6. Save PDF
+  // 7. Save PDF
   const cleanTitle = reportTitle.toLowerCase().replace(/[^a-z0-9]/g, '_');
   const filename = `BMU_Report_${cleanTitle}_${Date.now()}.pdf`;
   doc.save(filename);

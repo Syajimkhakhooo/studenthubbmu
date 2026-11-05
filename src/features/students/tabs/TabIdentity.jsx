@@ -75,6 +75,17 @@ export function TabIdentity({ student }) {
                 {student.program_type}
               </div>
             </div>
+
+            <div>
+              <span className="text-xs text-subtle">Kelas Saat Ini</span>
+              <div style={{ marginTop: '2px', color: 'var(--text-primary)', fontWeight: 600 }}>
+                {student.kelas
+                  ? student.kelas === 'Pemula'
+                    ? 'Pemula'
+                    : `Kelas ${student.kelas}`
+                  : '-'}
+              </div>
+            </div>
           </div>
         </CardBody>
       </Card>

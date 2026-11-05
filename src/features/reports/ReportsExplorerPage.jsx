@@ -21,6 +21,7 @@ import {
   DEPARTURE_READINESS,
   DEPARTURE_STATUSES,
   DOCUMENT_TYPES,
+  KELAS_OPTIONS,
 } from '../../utils/constants';
 import {
   formatDate,
@@ -41,41 +42,50 @@ import {
   Table as TableIcon,
   Check,
   FileSpreadsheet,
+  Search,
 } from 'lucide-react';
+
+// Initial/empty filter state — shared for init and reset
+const EMPTY_FILTERS = {
+  entryYear: '',
+  entryMonth: '',
+  gender: '',
+  minAge: '',
+  maxAge: '',
+  minHeight: '',
+  maxHeight: '',
+  programType: '',
+  kelas: '',
+  targetJobInterest: '',
+  learningStatus: '',
+  leaveStatus: '',
+  interviewReadiness: '',
+  jobSelectionStatus: '',
+  departureReadiness: '',
+  departureStatus: '',
+  hasJft: false,
+  hasJlpt: false,
+  hasSsw: false,
+  hasWorkExperience: '',
+  smokingStatus: '',
+  hasLicense: '',
+  willingOvertime: '',
+  willingRelocation: '',
+  verifiedDocType: '',
+};
 
 export function ReportsExplorerPage() {
   const { success, error: toastError } = useToast();
 
-  // Filters State
-  const [filters, setFilters] = useState({
-    entryYear: '',
-    entryMonth: '',
-    gender: '',
-    minAge: '',
-    maxAge: '',
-    minHeight: '',
-    maxHeight: '',
-    programType: '',
-    targetJobInterest: '',
-    learningStatus: '',
-    leaveStatus: '',
-    interviewReadiness: '',
-    jobSelectionStatus: '',
-    departureReadiness: '',
-    departureStatus: '',
-    hasJft: false,
-    hasJlpt: false,
-    hasSsw: false,
-    hasWorkExperience: '',
-    smokingStatus: '',
-    hasLicense: '',
-    willingOvertime: '',
-    willingRelocation: '',
-    verifiedDocType: '',
-  });
+  // "Draft" filters — what the user is selecting in the UI (not yet applied)
+  const [draftFilters, setDraftFilters] = useState({ ...EMPTY_FILTERS });
+
+  // "Applied" filters — the filters actually used for the Supabase query
+  const [appliedFilters, setAppliedFilters] = useState({ ...EMPTY_FILTERS });
 
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [hasQueried, setHasQueried] = useState(false);
 
   // PDF Export Modal State
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
@@ -87,6 +97,7 @@ export function ReportsExplorerPage() {
     'gender',
     'age',
     'height',
+    'kelas',
     'program',
     'job_interest',
     'learning_status',
@@ -100,61 +111,43 @@ export function ReportsExplorerPage() {
     { id: 'age', label: 'Usia Siswa' },
     { id: 'height', label: 'Tinggi Badan (cm)' },
     { id: 'weight', label: 'Berat Badan (kg)' },
+    { id: 'kelas', label: 'Kelas' },
     { id: 'program', label: 'Program Pelatihan (SSW/Magang)' },
-    { id: 'ssw_field', label: 'Bidang SSW & Bahasa (Kualifikasi Sertifikat)' },
     { id: 'job_interest', label: 'Bidang Minat Kerja' },
     { id: 'entry_date', label: 'Tanggal Masuk BMU' },
+    { id: 'certs', label: 'Sertifikasi & Kualifikasi Bahasa' },
     { id: 'learning_status', label: 'Status Pembelajaran' },
     { id: 'selection_status', label: 'Status Seleksi Kerja' },
+    { id: 'departure_readiness', label: 'Kesiapan Keberangkatan' },
     { id: 'departure_status', label: 'Status Keberangkatan' },
-    { id: 'certs', label: 'Daftar Sertifikat & Bahasa' },
   ];
 
-  const handleFilterChange = (field, val) => {
-    setFilters((prev) => ({ ...prev, [field]: val }));
+  const handleDraftFilterChange = (field, val) => {
+    setDraftFilters((prev) => ({ ...prev, [field]: val }));
+  };
+
+  const handleApplyFilters = () => {
+    setAppliedFilters({ ...draftFilters });
   };
 
   const handleResetFilters = () => {
-    setFilters({
-      entryYear: '',
-      entryMonth: '',
-      gender: '',
-      minAge: '',
-      maxAge: '',
-      minHeight: '',
-      maxHeight: '',
-      programType: '',
-      targetJobInterest: '',
-      learningStatus: '',
-      leaveStatus: '',
-      interviewReadiness: '',
-      jobSelectionStatus: '',
-      departureReadiness: '',
-      departureStatus: '',
-      hasJft: false,
-      hasJlpt: false,
-      hasSsw: false,
-      hasWorkExperience: '',
-      smokingStatus: '',
-      hasLicense: '',
-      willingOvertime: '',
-      willingRelocation: '',
-      verifiedDocType: '',
-    });
+    setDraftFilters({ ...EMPTY_FILTERS });
+    setAppliedFilters({ ...EMPTY_FILTERS });
   };
 
-  // Run dynamic query against Supabase
+  // Run dynamic query against Supabase only when appliedFilters change
   const runQuery = useCallback(async () => {
     setLoading(true);
+    setHasQueried(true);
     try {
-      const data = await reportService.queryStudents(filters);
+      const data = await reportService.queryStudents(appliedFilters);
       setStudents(data);
     } catch (err) {
       toastError('Gagal memproses filter siswa.');
     } finally {
       setLoading(false);
     }
-  }, [filters, toastError]);
+  }, [appliedFilters, toastError]);
 
   useEffect(() => {
     runQuery();
@@ -162,21 +155,28 @@ export function ReportsExplorerPage() {
 
   // Construct readable filter summary
   const getFilterSummaryString = () => {
+    const f = appliedFilters;
     const parts = [];
-    if (filters.programType) parts.push(`Program: ${filters.programType}`);
-    if (filters.gender) parts.push(`Gender: ${filters.gender === 'L' ? 'Laki-laki' : 'Perempuan'}`);
-    if (filters.minAge || filters.maxAge) parts.push(`Usia: ${filters.minAge || 'min'} - ${filters.maxAge || 'max'} thn`);
-    if (filters.minHeight || filters.maxHeight) parts.push(`TB: ${filters.minHeight || 'min'} - ${filters.maxHeight || 'max'} cm`);
-    if (filters.targetJobInterest) parts.push(`Minat: ${filters.targetJobInterest}`);
-    if (filters.learningStatus) parts.push(`Status Belajar: ${filters.learningStatus}`);
-    if (filters.jobSelectionStatus) parts.push(`Seleksi: ${filters.jobSelectionStatus}`);
-    if (filters.hasJft) parts.push('Memiliki JFT');
-    if (filters.hasJlpt) parts.push('Memiliki JLPT');
-    if (filters.hasSsw) parts.push('Memiliki SSW');
-    if (filters.smokingStatus === 'false') parts.push('Tidak Merokok');
-    if (filters.willingOvertime === 'true') parts.push('Bersedia Lembur');
-    if (filters.willingRelocation === 'true') parts.push('Bersedia Relokasi');
-    if (filters.verifiedDocType) parts.push(`Dokumen Terverifikasi: ${filters.verifiedDocType}`);
+    if (f.programType) parts.push(`Program: ${f.programType}`);
+    if (f.kelas) parts.push(`Kelas: ${f.kelas}`);
+    if (f.gender) parts.push(`Gender: ${f.gender === 'L' ? 'Laki-laki' : 'Perempuan'}`);
+    if (f.minAge || f.maxAge) parts.push(`Usia: ${f.minAge || 'min'} - ${f.maxAge || 'max'} thn`);
+    if (f.minHeight || f.maxHeight) parts.push(`TB: ${f.minHeight || 'min'} - ${f.maxHeight || 'max'} cm`);
+    if (f.targetJobInterest) parts.push(`Minat: ${f.targetJobInterest}`);
+    if (f.learningStatus) parts.push(`Status Belajar: ${f.learningStatus}`);
+    if (f.jobSelectionStatus) parts.push(`Seleksi: ${f.jobSelectionStatus}`);
+    if (f.departureReadiness) {
+      const dr = DEPARTURE_READINESS.find((d) => d.value === f.departureReadiness);
+      parts.push(`Kesiapan: ${dr?.label || f.departureReadiness}`);
+    }
+    if (f.departureStatus) parts.push(`Keberangkatan: ${f.departureStatus}`);
+    if (f.hasJft) parts.push('Memiliki JFT');
+    if (f.hasJlpt) parts.push('Memiliki JLPT');
+    if (f.hasSsw) parts.push('Memiliki SSW');
+    if (f.smokingStatus === 'false') parts.push('Tidak Merokok');
+    if (f.willingOvertime === 'true') parts.push('Bersedia Lembur');
+    if (f.willingRelocation === 'true') parts.push('Bersedia Relokasi');
+    if (f.verifiedDocType) parts.push(`Dokumen Terverifikasi: ${f.verifiedDocType}`);
 
     return parts.length > 0 ? parts.join('  •  ') : 'Semua Siswa Terdaftar (Tanpa Filter)';
   };
@@ -204,12 +204,14 @@ export function ReportsExplorerPage() {
       const excelRows = students.map((s, idx) => {
         const sswField = getStudentSswField(s);
         const certLabels = (s.certifications || []).map((c) => formatCertificationLabel(c)).join(', ');
+        const dr = getDepartureReadinessMeta(s.student_journey?.departure_readiness);
 
         return {
           'No': idx + 1,
           'No. ID Siswa': s.student_id_number || '-',
           'Nama Lengkap': s.full_name || '-',
           'Nama Panggilan': s.nickname || '-',
+          'Kelas': s.kelas ? (s.kelas === 'Pemula' ? 'Pemula' : `Kelas ${s.kelas}`) : '-',
           'Jenis Kelamin': s.gender === 'L' ? 'Laki-laki' : s.gender === 'P' ? 'Perempuan' : '-',
           'Usia (Tahun)': calculateAge(s.birth_date),
           'Tanggal Lahir': formatDate(s.birth_date),
@@ -221,13 +223,12 @@ export function ReportsExplorerPage() {
               : s.program_type === 'TG_INTERNSHIP'
               ? 'Magang / Ikushei Shuro'
               : s.program_type || '-',
-          'Bidang SSW & Bahasa': sswField || '-',
           'Bidang Minat Kerja': s.target_job_interest || '-',
-          'Sertifikasi & Bahasa': certLabels || '-',
+          'Sertifikasi & Kualifikasi Bahasa': sswField || certLabels || '-',
           'Status Belajar': getLearningStatusMeta(s.student_journey?.learning_status).label,
           'Kesiapan Wawancara': s.student_journey?.interview_readiness === 'siap' ? 'Siap Wawancara' : 'Belum Siap',
           'Status Seleksi': getJobSelectionMeta(s.student_journey?.job_selection_status).label,
-          'Kesiapan Berangkat': getDepartureReadinessMeta(s.student_journey?.departure_readiness).label,
+          'Kesiapan Keberangkatan': dr.label,
           'Status Keberangkatan': getDepartureStatusMeta(s.student_journey?.departure_status).label,
           'Tanggal Masuk': formatDate(s.entry_date),
         };
@@ -279,6 +280,26 @@ export function ReportsExplorerPage() {
             {row.gender === 'L' ? 'Laki-laki' : 'Perempuan'} • Program {row.program_type === 'SSW' ? 'Tokutei Ginou (SSW)' : row.program_type === 'TG_INTERNSHIP' ? 'Magang / Ikushei Shuro' : row.program_type || '-'}
           </div>
         </div>
+      ),
+    },
+    {
+      header: 'KELAS',
+      accessor: 'kelas',
+      render: (row) => (
+        <span
+          style={{
+            fontSize: '0.75rem',
+            fontWeight: 600,
+            padding: '3px 8px',
+            borderRadius: 'var(--radius-sm)',
+            backgroundColor: row.kelas ? 'var(--bg-surface-elevated)' : 'transparent',
+            border: row.kelas ? '1px solid var(--border-subtle)' : 'none',
+            color: row.kelas ? 'var(--text-primary)' : 'var(--text-tertiary)',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {row.kelas ? (row.kelas === 'Pemula' ? 'Pemula' : `Kelas ${row.kelas}`) : '-'}
+        </span>
       ),
     },
     {
@@ -346,10 +367,10 @@ export function ReportsExplorerPage() {
       },
     },
     {
-      header: 'STATUS SELEKSI',
-      accessor: 'job_selection_status',
+      header: 'KESIAPAN BERANGKAT',
+      accessor: 'departure_readiness',
       render: (row) => {
-        const meta = getJobSelectionMeta(row.student_journey?.job_selection_status);
+        const meta = getDepartureReadinessMeta(row.student_journey?.departure_readiness);
         return <Badge variant={meta.badge}>{meta.label}</Badge>;
       },
     },
@@ -362,6 +383,9 @@ export function ReportsExplorerPage() {
       },
     },
   ];
+
+  // Check if draft filters differ from applied (to show "perlu terapkan" hint)
+  const hasPendingChanges = JSON.stringify(draftFilters) !== JSON.stringify(appliedFilters);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
@@ -416,24 +440,34 @@ export function ReportsExplorerPage() {
       <Card>
         <CardHeader
           title="Filter Pencarian Gabungan (Multi-Criteria AND)"
-          subtitle="Pencarian query dinamis langsung ke database Supabase"
+          subtitle="Atur filter lalu klik Terapkan Filter untuk memperbarui hasil"
         >
           <SlidersHorizontal size={18} style={{ color: 'var(--text-tertiary)' }} />
         </CardHeader>
         <CardBody style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          {/* Row 1: Program, Gender, Minat */}
-          <div className="grid grid-cols-4 gap-3 md-grid-cols-1">
+          {/* Row 1: Program, Kelas, Gender, Minat, Dokumen */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '12px' }}>
             <Select
               label="Program BMU"
-              value={filters.programType}
-              onChange={(e) => handleFilterChange('programType', e.target.value)}
+              value={draftFilters.programType}
+              onChange={(e) => handleDraftFilterChange('programType', e.target.value)}
               options={[{ value: '', label: 'Semua Program' }, ...PROGRAM_TYPES]}
               placeholder=""
             />
             <Select
+              label="Kelas"
+              value={draftFilters.kelas}
+              onChange={(e) => handleDraftFilterChange('kelas', e.target.value)}
+              options={[
+                { value: '', label: 'Semua Kelas' },
+                ...KELAS_OPTIONS,
+              ]}
+              placeholder=""
+            />
+            <Select
               label="Jenis Kelamin"
-              value={filters.gender}
-              onChange={(e) => handleFilterChange('gender', e.target.value)}
+              value={draftFilters.gender}
+              onChange={(e) => handleDraftFilterChange('gender', e.target.value)}
               options={[
                 { value: '', label: 'Semua Gender' },
                 { value: 'L', label: 'Laki-laki (L)' },
@@ -443,92 +477,72 @@ export function ReportsExplorerPage() {
             />
             <Select
               label="Bidang Minat Kerja"
-              value={filters.targetJobInterest}
-              onChange={(e) => handleFilterChange('targetJobInterest', e.target.value)}
+              value={draftFilters.targetJobInterest}
+              onChange={(e) => handleDraftFilterChange('targetJobInterest', e.target.value)}
               options={[{ value: '', label: 'Semua Bidang' }, ...JOB_INTEREST_FIELDS]}
               placeholder=""
             />
             <Select
               label="Dokumen Terverifikasi"
-              value={filters.verifiedDocType}
-              onChange={(e) => handleFilterChange('verifiedDocType', e.target.value)}
+              value={draftFilters.verifiedDocType}
+              onChange={(e) => handleDraftFilterChange('verifiedDocType', e.target.value)}
               options={[{ value: '', label: 'Semua Dokumen' }, ...DOCUMENT_TYPES]}
               placeholder=""
             />
           </div>
 
-          {/* Row 2: Status Pipeline */}
+          {/* Row 2: Status Belajar, Interview, Seleksi, Keberangkatan */}
           <div className="grid grid-cols-4 gap-3 md-grid-cols-1">
             <Select
               label="Status Belajar"
-              value={filters.learningStatus}
-              onChange={(e) => handleFilterChange('learningStatus', e.target.value)}
+              value={draftFilters.learningStatus}
+              onChange={(e) => handleDraftFilterChange('learningStatus', e.target.value)}
               options={[{ value: '', label: 'Semua Status Belajar' }, ...LEARNING_STATUSES]}
               placeholder=""
             />
             <Select
               label="Kesiapan Wawancara"
-              value={filters.interviewReadiness}
-              onChange={(e) => handleFilterChange('interviewReadiness', e.target.value)}
+              value={draftFilters.interviewReadiness}
+              onChange={(e) => handleDraftFilterChange('interviewReadiness', e.target.value)}
               options={[{ value: '', label: 'Semua Kesiapan' }, ...INTERVIEW_READINESS]}
               placeholder=""
             />
             <Select
               label="Status Seleksi Kerja"
-              value={filters.jobSelectionStatus}
-              onChange={(e) => handleFilterChange('jobSelectionStatus', e.target.value)}
+              value={draftFilters.jobSelectionStatus}
+              onChange={(e) => handleDraftFilterChange('jobSelectionStatus', e.target.value)}
               options={[{ value: '', label: 'Semua Status Seleksi' }, ...JOB_SELECTION_STATUSES]}
               placeholder=""
             />
             <Select
               label="Status Keberangkatan"
-              value={filters.departureStatus}
-              onChange={(e) => handleFilterChange('departureStatus', e.target.value)}
+              value={draftFilters.departureStatus}
+              onChange={(e) => handleDraftFilterChange('departureStatus', e.target.value)}
               options={[{ value: '', label: 'Semua Keberangkatan' }, ...DEPARTURE_STATUSES]}
               placeholder=""
             />
           </div>
 
-          {/* Row 3: Rentang Usia & Tinggi Badan */}
+          {/* Row 3: Kesiapan Keberangkatan (includes menunggu_kontrak & menunggu_coe) */}
           <div className="grid grid-cols-4 gap-3 md-grid-cols-1">
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <Input
-                label="Usia Min (thn)"
-                type="number"
-                value={filters.minAge}
-                onChange={(e) => handleFilterChange('minAge', e.target.value)}
-                placeholder="18"
-              />
-              <Input
-                label="Usia Max (thn)"
-                type="number"
-                value={filters.maxAge}
-                onChange={(e) => handleFilterChange('maxAge', e.target.value)}
-                placeholder="30"
-              />
-            </div>
-
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <Input
-                label="Tinggi Min (cm)"
-                type="number"
-                value={filters.minHeight}
-                onChange={(e) => handleFilterChange('minHeight', e.target.value)}
-                placeholder="160"
-              />
-              <Input
-                label="Tinggi Max (cm)"
-                type="number"
-                value={filters.maxHeight}
-                onChange={(e) => handleFilterChange('maxHeight', e.target.value)}
-                placeholder="180"
-              />
-            </div>
-
+            <Select
+              label="Kesiapan Keberangkatan"
+              value={draftFilters.departureReadiness}
+              onChange={(e) => handleDraftFilterChange('departureReadiness', e.target.value)}
+              options={[{ value: '', label: 'Semua Kesiapan Berangkat' }, ...DEPARTURE_READINESS]}
+              placeholder=""
+            />
+            <Select
+              label="Status Cuti"
+              value={draftFilters.leaveStatus}
+              onChange={(e) => handleDraftFilterChange('leaveStatus', e.target.value)}
+              options={[{ value: '', label: 'Semua Status Cuti' }, ...LEAVE_STATUSES]}
+              placeholder=""
+            />
             <Select
               label="Kepemilikan SIM"
-              value={filters.hasLicense}
-              onChange={(e) => handleFilterChange('hasLicense', e.target.value)}
+              value={draftFilters.hasLicense}
+              onChange={(e) => handleDraftFilterChange('hasLicense', e.target.value)}
               options={[
                 { value: '', label: 'Semua (Ada/Tidak)' },
                 { value: 'true', label: 'Memiliki SIM (C/A/B1)' },
@@ -536,11 +550,10 @@ export function ReportsExplorerPage() {
               ]}
               placeholder=""
             />
-
             <Select
               label="Status Merokok"
-              value={filters.smokingStatus}
-              onChange={(e) => handleFilterChange('smokingStatus', e.target.value)}
+              value={draftFilters.smokingStatus}
+              onChange={(e) => handleDraftFilterChange('smokingStatus', e.target.value)}
               options={[
                 { value: '', label: 'Semua (Merokok/Bebas)' },
                 { value: 'false', label: 'Tidak Merokok (Non-Smoking)' },
@@ -550,7 +563,44 @@ export function ReportsExplorerPage() {
             />
           </div>
 
-          {/* Row 4: Checkboxes Sertifikasi & Preferensi */}
+          {/* Row 4: Rentang Usia & Tinggi Badan */}
+          <div className="grid grid-cols-2 gap-3 md-grid-cols-1">
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <Input
+                label="Usia Min (thn)"
+                type="number"
+                value={draftFilters.minAge}
+                onChange={(e) => handleDraftFilterChange('minAge', e.target.value)}
+                placeholder="18"
+              />
+              <Input
+                label="Usia Max (thn)"
+                type="number"
+                value={draftFilters.maxAge}
+                onChange={(e) => handleDraftFilterChange('maxAge', e.target.value)}
+                placeholder="30"
+              />
+            </div>
+
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <Input
+                label="Tinggi Min (cm)"
+                type="number"
+                value={draftFilters.minHeight}
+                onChange={(e) => handleDraftFilterChange('minHeight', e.target.value)}
+                placeholder="160"
+              />
+              <Input
+                label="Tinggi Max (cm)"
+                type="number"
+                value={draftFilters.maxHeight}
+                onChange={(e) => handleDraftFilterChange('maxHeight', e.target.value)}
+                placeholder="180"
+              />
+            </div>
+          </div>
+
+          {/* Row 5: Checkboxes Sertifikasi & Preferensi */}
           <div
             style={{
               display: 'flex',
@@ -567,24 +617,24 @@ export function ReportsExplorerPage() {
             <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8125rem', cursor: 'pointer' }}>
               <input
                 type="checkbox"
-                checked={filters.hasJft}
-                onChange={(e) => handleFilterChange('hasJft', e.target.checked)}
+                checked={draftFilters.hasJft}
+                onChange={(e) => handleDraftFilterChange('hasJft', e.target.checked)}
               />
               <span>Harus punya JFT-Basic A2</span>
             </label>
             <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8125rem', cursor: 'pointer' }}>
               <input
                 type="checkbox"
-                checked={filters.hasJlpt}
-                onChange={(e) => handleFilterChange('hasJlpt', e.target.checked)}
+                checked={draftFilters.hasJlpt}
+                onChange={(e) => handleDraftFilterChange('hasJlpt', e.target.checked)}
               />
               <span>Harus punya JLPT (N5-N1)</span>
             </label>
             <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8125rem', cursor: 'pointer' }}>
               <input
                 type="checkbox"
-                checked={filters.hasSsw}
-                onChange={(e) => handleFilterChange('hasSsw', e.target.checked)}
+                checked={draftFilters.hasSsw}
+                onChange={(e) => handleDraftFilterChange('hasSsw', e.target.checked)}
               />
               <span>Harus punya Sertifikat SSW</span>
             </label>
@@ -594,19 +644,49 @@ export function ReportsExplorerPage() {
             <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8125rem', cursor: 'pointer' }}>
               <input
                 type="checkbox"
-                checked={filters.willingOvertime === 'true'}
-                onChange={(e) => handleFilterChange('willingOvertime', e.target.checked ? 'true' : '')}
+                checked={draftFilters.willingOvertime === 'true'}
+                onChange={(e) => handleDraftFilterChange('willingOvertime', e.target.checked ? 'true' : '')}
               />
               <span>Bersedia Lembur</span>
             </label>
             <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8125rem', cursor: 'pointer' }}>
               <input
                 type="checkbox"
-                checked={filters.willingRelocation === 'true'}
-                onChange={(e) => handleFilterChange('willingRelocation', e.target.checked ? 'true' : '')}
+                checked={draftFilters.willingRelocation === 'true'}
+                onChange={(e) => handleDraftFilterChange('willingRelocation', e.target.checked ? 'true' : '')}
               />
               <span>Bersedia Relokasi</span>
             </label>
+          </div>
+
+          {/* Apply Filter Button */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px',
+              paddingTop: '12px',
+              borderTop: '1px solid var(--border-subtle)',
+            }}
+          >
+            <Button
+              variant="primary"
+              icon={Search}
+              onClick={handleApplyFilters}
+            >
+              Terapkan Filter
+            </Button>
+            {hasPendingChanges && (
+              <span
+                style={{
+                  fontSize: '0.75rem',
+                  color: '#f59e0b',
+                  fontStyle: 'italic',
+                }}
+              >
+                Ada perubahan filter yang belum diterapkan — klik Terapkan Filter untuk memperbarui hasil.
+              </span>
+            )}
           </div>
         </CardBody>
       </Card>
@@ -711,7 +791,7 @@ export function ReportsExplorerPage() {
                   gridTemplateColumns: 'repeat(2, 1fr)',
                   gap: '8px',
                   marginTop: '8px',
-                  maxHeight: '180px',
+                  maxHeight: '200px',
                   overflowY: 'auto',
                   padding: '8px',
                   border: '1px solid var(--border-subtle)',

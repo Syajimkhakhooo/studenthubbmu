@@ -21,6 +21,7 @@ export const reportService = {
           weight_kg,
           entry_date,
           program_type,
+          kelas,
           target_job_interest,
           smoking_status,
           tattoo_status,
@@ -61,6 +62,9 @@ export const reportService = {
       }
       if (filters.programType) {
         query = query.eq('program_type', filters.programType);
+      }
+      if (filters.kelas) {
+        query = query.eq('kelas', filters.kelas);
       }
       if (filters.targetJobInterest) {
         query = query.ilike('target_job_interest', `%${filters.targetJobInterest}%`);

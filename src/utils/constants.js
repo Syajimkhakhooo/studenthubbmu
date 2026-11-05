@@ -3,6 +3,7 @@ export const USER_ROLES = {
   OPERATIONAL_MANAGER: 'operational_manager',
   PRINCIPAL: 'principal',
   SENSEI_STAFF: 'sensei_staff',
+  VIEWER: 'viewer',
 };
 
 export const ROLE_LABELS = {
@@ -10,7 +11,17 @@ export const ROLE_LABELS = {
   operational_manager: 'Manajer Operasional',
   principal: 'Kepala Sekolah',
   sensei_staff: 'Sensei / Staf Internal',
+  viewer: 'Viewer (Hanya Lihat)',
 };
+
+// Opsi kelas di LPK BMU
+export const KELAS_OPTIONS = [
+  { value: 'Pemula', label: 'Pemula' },
+  { value: '1', label: 'Kelas 1' },
+  { value: '2A', label: 'Kelas 2A' },
+  { value: '2B', label: 'Kelas 2B' },
+  { value: '3', label: 'Kelas 3' },
+];
 
 export const PROGRAM_TYPES = [
   { value: 'SSW', label: 'Tokutei Ginou (Specified Skilled Worker)' },

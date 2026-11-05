@@ -291,6 +291,7 @@ export const studentService = {
       'eye_vision_status',
       'driving_license_type',
       'marital_status',
+      'kelas',
       'notes',
     ].forEach((key) => {
       if (payload[key] === '') {
@@ -328,6 +329,7 @@ export const studentService = {
       'willing_overtime',
       'willing_relocation',
       'marital_status',
+      'kelas',
       'is_archived',
       'notes',
       'created_by',

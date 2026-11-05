@@ -2,7 +2,8 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
 import { useTheme } from "../../hooks/useTheme";
-import { ArrowRight, LogIn, Sun, Moon, ChevronRight } from "lucide-react";
+import { settingsService } from "../../services/settingsService";
+import { ArrowRight, LogIn, Sun, Moon, ChevronRight, Wrench } from "lucide-react";
 
 const STYLES = `
   @import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap");
@@ -62,10 +63,25 @@ const STYLES = `
 
 export function LandingPage() {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const { isDark, toggleTheme } = useTheme();
   const [scrolled, setScrolled] = useState(false);
+  const [maintenanceMode, setMaintenanceMode] = useState(false);
   const year = new Date().getFullYear();
+
+  useEffect(() => {
+    let cancelled = false;
+    async function checkMaintenance() {
+      try {
+        const isMaint = await settingsService.getMaintenanceMode();
+        if (!cancelled) setMaintenanceMode(isMaint);
+      } catch {
+        // ignore
+      }
+    }
+    checkMaintenance();
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     const fn = () => setScrolled(window.scrollY > 30);
@@ -73,6 +89,104 @@ export function LandingPage() {
     return () => window.removeEventListener("scroll", fn);
   }, []);
 
+  const isAdmin = profile?.role === 'admin';
+
+  // JIKA MODE PEMELIHARAAN AKTIF DAN PENGGUNA BUKAN ADMIN:
+  // TAMPILKAN TOAST CARD: "Website sedang dalam pemeliharaan, mohon kembali lagi nanti"
+  if (maintenanceMode && !isAdmin) {
+    return (
+      <div
+        className="lp-root"
+        style={{
+          minHeight: "100vh",
+          backgroundColor: "var(--bg-app)",
+          color: "var(--text-primary)",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: "24px",
+          position: "relative",
+          textAlign: "center",
+        }}
+      >
+        {/* Toast Card Notification */}
+        <div
+          style={{
+            maxWidth: "460px",
+            width: "100%",
+            backgroundColor: "var(--bg-surface)",
+            border: "1px solid var(--border-default)",
+            borderRadius: "16px",
+            padding: "28px 24px",
+            boxShadow: "0 10px 30px rgba(0,0,0,0.12)",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: "14px",
+          }}
+        >
+          {/* Toast Icon Badge */}
+          <div
+            style={{
+              width: "48px",
+              height: "48px",
+              borderRadius: "50%",
+              backgroundColor: "rgba(245, 158, 11, 0.12)",
+              border: "1px solid rgba(245, 158, 11, 0.3)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <Wrench size={22} style={{ color: "#f59e0b" }} />
+          </div>
+
+          <div>
+            <h2
+              style={{
+                fontSize: "1.0625rem",
+                fontWeight: 700,
+                color: "var(--text-primary)",
+                margin: 0,
+              }}
+            >
+              Website Sedang Dalam Pemeliharaan
+            </h2>
+            <p
+              style={{
+                fontSize: "0.875rem",
+                color: "var(--text-secondary)",
+                marginTop: "6px",
+                marginBottom: 0,
+                lineHeight: 1.5,
+              }}
+            >
+              Mohon kembali lagi nanti. Tim kami sedang melakukan pembaruan sistem.
+            </p>
+          </div>
+
+          <button
+            onClick={() => window.location.reload()}
+            style={{
+              marginTop: "8px",
+              padding: "9px 22px",
+              borderRadius: "8px",
+              border: "1px solid var(--border-default)",
+              backgroundColor: "var(--bg-surface-elevated)",
+              color: "var(--text-primary)",
+              fontSize: "0.8125rem",
+              fontWeight: 600,
+              cursor: "pointer",
+              transition: "all .15s",
+            }}
+          >
+            Muat Ulang Halaman
+          </button>
+        </div>
+      </div>
+    );
+  }
   const toPortal = () => navigate(user ? "/dashboard" : "/login");
   const scrollTo = (id) => document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
 
@@ -125,10 +239,32 @@ export function LandingPage() {
 
         {/* HERO */}
         <section style={{ maxWidth: "920px", margin: "0 auto", padding: "96px 28px 80px", textAlign: "center" }}>
+          {/* Top Banner if in Maintenance */}
+          {maintenanceMode && (
+            <div
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "10px",
+                padding: "10px 20px",
+                borderRadius: "12px",
+                backgroundColor: "rgba(239, 68, 68, 0.12)",
+                border: "1px solid rgba(239, 68, 68, 0.35)",
+                color: "#ef4444",
+                fontSize: ".8125rem",
+                fontWeight: 600,
+                marginBottom: "20px",
+              }}
+            >
+              <Wrench size={16} />
+              <span>SISTEM DALAM MODE PEMELIHARAAN — HANYA ADMINISTRATOR YANG DAPAT MENGAKSES</span>
+            </div>
+          )}
+
           <div className="lp-a1" style={{ marginBottom: "28px" }}>
-            <span style={{ display: "inline-flex", alignItems: "center", gap: "7px", padding: "5px 13px", borderRadius: "999px", border: "1px solid var(--border-subtle)", background: "var(--bg-surface)", fontSize: ".72rem", fontWeight: 600, color: "var(--text-secondary)", letterSpacing: ".03em" }}>
-              <span className="lp-live" />
-              SISTEM AKTIF • LPK &amp; SO BAHTERA MITRA UNGGULAN
+            <span style={{ display: "inline-flex", alignItems: "center", gap: "7px", padding: "5px 13px", borderRadius: "999px", border: `1px solid ${maintenanceMode ? "rgba(239,68,68,0.4)" : "var(--border-subtle)"}`, background: "var(--bg-surface)", fontSize: ".72rem", fontWeight: 600, color: maintenanceMode ? "#ef4444" : "var(--text-secondary)", letterSpacing: ".03em" }}>
+              <span className="lp-live" style={{ background: maintenanceMode ? "#ef4444" : "#4ade80" }} />
+              {maintenanceMode ? "MODE PEMELIHARAAN AKTIF • AKSES NON-ADMIN DIKUNCI" : "SISTEM AKTIF • LPK & SO BAHTERA MITRA UNGGULAN"}
             </span>
           </div>
 

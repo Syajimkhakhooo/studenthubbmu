@@ -3,7 +3,7 @@ import { Modal } from '../../components/ui/Modal';
 import { Button } from '../../components/ui/Button';
 import { Input, Textarea } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
-import { PROGRAM_TYPES, JOB_INTEREST_FIELDS } from '../../utils/constants';
+import { PROGRAM_TYPES, JOB_INTEREST_FIELDS, KELAS_OPTIONS } from '../../utils/constants';
 import { studentService } from '../../services/studentService';
 import { useAuth } from '../../hooks/useAuth';
 import { useToast } from '../../hooks/useToast';
@@ -41,6 +41,7 @@ export function StudentFormModal({ isOpen, onClose, student = null, onSuccess })
     willing_overtime: true,
     willing_relocation: true,
     marital_status: 'Belum Menikah',
+    kelas: '',
     notes: '',
   });
 
@@ -77,6 +78,7 @@ export function StudentFormModal({ isOpen, onClose, student = null, onSuccess })
         willing_overtime: student.willing_overtime !== false,
         willing_relocation: student.willing_relocation !== false,
         marital_status: student.marital_status || 'Belum Menikah',
+        kelas: student.kelas || '',
         notes: student.notes || '',
       });
     } else {
@@ -213,6 +215,12 @@ export function StudentFormModal({ isOpen, onClose, student = null, onSuccess })
               value={formData.marital_status}
               onChange={(e) => handleChange('marital_status', e.target.value)}
               options={['Belum Menikah', 'Menikah', 'Cerai Hidup', 'Cerai Mati']}
+            />
+            <Select
+              label="Kelas Saat Ini"
+              value={formData.kelas}
+              onChange={(e) => handleChange('kelas', e.target.value)}
+              options={[{ value: '', label: '— Pilih Kelas —' }, ...KELAS_OPTIONS]}
             />
           </div>
         </div>

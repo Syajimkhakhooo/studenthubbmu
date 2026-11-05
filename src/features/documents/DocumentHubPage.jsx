@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { documentService } from '../../services/documentService';
 import { useAuth } from '../../hooks/useAuth';
 import { useToast } from '../../hooks/useToast';
@@ -246,6 +246,7 @@ function StudentDocCard({ studentId, studentName, studentIdNumber, programType, 
 // ─── Main Page ─────────────────────────────────────────────────────────────────
 export function DocumentHubPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { profile } = useAuth();
   const { success, error: toastError } = useToast();
 
@@ -253,9 +254,16 @@ export function DocumentHubPage() {
   const [loading, setLoading] = useState(true);
 
   // Filters
+  const statusFromUrl = searchParams.get('status') || '';
   const [search, setSearch] = useState('');
   const [filterDocType, setFilterDocType] = useState('');
-  const [filterStatus, setFilterStatus] = useState('');
+  const [filterStatus, setFilterStatus] = useState(statusFromUrl);
+
+  useEffect(() => {
+    if (statusFromUrl) {
+      setFilterStatus(statusFromUrl);
+    }
+  }, [statusFromUrl]);
 
   // Verification modal
   const [verifyingDoc, setVerifyingDoc] = useState(null);

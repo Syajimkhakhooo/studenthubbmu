@@ -31,7 +31,7 @@ export function AuthProvider({ children }) {
         setDeniedEmail('');
         return data;
       } else if (data && data.is_active === false) {
-        // Check if user is now in internal_allowlist
+        // Check if user is in internal_allowlist
         const { data: allowRow } = await supabase
           .from('internal_allowlist')
           .select('*')
@@ -41,7 +41,7 @@ export function AuthProvider({ children }) {
         if (allowRow) {
           const activatedProfile = {
             ...data,
-            role: allowRow.default_role || 'admin',
+            role: allowRow.default_role || 'viewer',
             is_active: true,
           };
           // Try to update DB in background
@@ -58,11 +58,24 @@ export function AuthProvider({ children }) {
           return activatedProfile;
         }
 
-        // User was explicitly marked inactive in database and not in allowlist
-        setProfile(null);
-        setAccessDenied(true);
-        setDeniedEmail(userEmail || data.email || '');
-        return null;
+        // AUTO-VIEWER: Any Google login not in allowlist automatically becomes a viewer
+        const viewerProfile = {
+          ...data,
+          role: 'viewer',
+          is_active: true,
+        };
+
+        supabase
+          .from('profiles')
+          .update({ role: 'viewer', is_active: true })
+          .eq('id', userId)
+          .then(() => {})
+          .catch(() => {});
+
+        setProfile(viewerProfile);
+        setAccessDenied(false);
+        setDeniedEmail('');
+        return viewerProfile;
       }
 
       // 2. If row not found in profiles (e.g. trigger didn't run or RLS blocked)
@@ -73,13 +86,13 @@ export function AuthProvider({ children }) {
         .ilike('email', userEmail)
         .maybeSingle();
 
-      const resolvedRole = allowRow?.default_role || 'admin';
+      const resolvedRole = allowRow?.default_role || 'viewer';
       const resolvedName =
         allowRow?.full_name ||
         userMeta?.full_name ||
         userMeta?.name ||
         userEmail?.split('@')[0] ||
-        'Administrator BMU';
+        'Viewer BMU';
 
       const activeProfile = {
         id: userId,
@@ -189,11 +202,6 @@ export function AuthProvider({ children }) {
       provider: 'google',
       options: {
         redirectTo: `${window.location.origin}/auth/callback`,
-        scopes: 'email profile openid',
-        queryParams: {
-          access_type: 'offline',
-          prompt: 'consent',
-        },
       },
     });
 
@@ -284,6 +292,7 @@ export function AuthProvider({ children }) {
     isAdmin: profile?.role === 'admin' || !profile?.role,
     isManager: profile?.role === 'operational_manager',
     isPrincipal: profile?.role === 'principal',
+    isViewer: profile?.role === 'viewer',
     isStaff: Boolean(profile?.is_active !== false),
     loading,
     accessDenied,

@@ -14,15 +14,22 @@ import {
 } from 'lucide-react';
 
 export function Sidebar({ isCollapsed, onToggleCollapse, isMobile, onCloseMobile }) {
-  const { profile, isAdmin, isPrincipal } = useAuth();
+  const { profile, isAdmin, isPrincipal, isViewer } = useAuth();
 
   const navItems = [
     { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { to: '/students', label: 'Data Siswa', icon: Users },
-    { to: '/documents', label: 'Dokumen Siswa', icon: FileCheck2 },
-    { to: '/journey', label: 'Perjalanan Siswa', icon: Route },
-    { to: '/reports', label: 'Filter & Laporan', icon: Filter },
   ];
+
+  // Dokumen Siswa only visible to internal staff/admins, hidden for viewers
+  if (!isViewer) {
+    navItems.push({ to: '/documents', label: 'Dokumen Siswa', icon: FileCheck2 });
+  }
+
+  navItems.push(
+    { to: '/journey', label: 'Perjalanan Siswa', icon: Route },
+    { to: '/reports', label: 'Filter & Laporan', icon: Filter }
+  );
 
   // Only admin and principal/manager have access to User & Settings menu
   if (isAdmin || isPrincipal) {

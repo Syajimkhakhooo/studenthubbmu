@@ -32,6 +32,10 @@ import {
   Sun,
   Moon,
   Check,
+  Wrench,
+  Eye,
+  Lock,
+  Unlock,
 } from 'lucide-react';
 
 export function SettingsPage() {
@@ -66,24 +70,33 @@ export function SettingsPage() {
   // Audit logs state
   const [auditLogs, setAuditLogs] = useState([]);
 
+  // Maintenance Mode state
+  const [maintenanceMode, setMaintenanceMode] = useState(false);
+  const [maintenanceLoading, setMaintenanceLoading] = useState(false);
+  const [isConfirmMaintenanceOpen, setIsConfirmMaintenanceOpen] = useState(false);
+  const [pendingMaintenanceState, setPendingMaintenanceState] = useState(false);
+
   const roleOptions = [
     { value: 'admin', label: 'Administrator' },
     { value: 'operational_manager', label: 'Manajer Operasional' },
     { value: 'principal', label: 'Kepala Sekolah' },
     { value: 'sensei_staff', label: 'Sensei / Staf Pengajar' },
+    { value: 'viewer', label: 'Viewer (Hanya Lihat — Read-Only)' },
   ];
 
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const [al, pr, logs] = await Promise.all([
+      const [al, pr, logs, maintMode] = await Promise.all([
         settingsService.getAllowlist(),
         settingsService.getProfiles(),
         settingsService.getAuditLogs(30),
+        settingsService.getMaintenanceMode(),
       ]);
       setAllowlist(al);
       setProfiles(pr);
       setAuditLogs(logs);
+      setMaintenanceMode(maintMode);
     } catch (err) {
       toastError('Gagal memuat pengaturan.');
     } finally {
@@ -161,10 +174,35 @@ export function SettingsPage() {
     }
   };
 
+  // Handle maintenance mode toggle (with confirmation)
+  const requestToggleMaintenance = (targetState) => {
+    setPendingMaintenanceState(targetState);
+    setIsConfirmMaintenanceOpen(true);
+  };
+
+  const confirmToggleMaintenance = async () => {
+    setMaintenanceLoading(true);
+    setIsConfirmMaintenanceOpen(false);
+    try {
+      await settingsService.setMaintenanceMode(pendingMaintenanceState, profile);
+      setMaintenanceMode(pendingMaintenanceState);
+      if (pendingMaintenanceState) {
+        success('Mode Pemeliharaan AKTIF — Sistem dikunci untuk pengguna non-admin.');
+      } else {
+        success('Mode Pemeliharaan NONAKTIF — Sistem kembali normal untuk semua pengguna.');
+      }
+    } catch (err) {
+      toastError(err.message || 'Gagal mengubah mode pemeliharaan.');
+    } finally {
+      setMaintenanceLoading(false);
+    }
+  };
+
   const tabsConfig = [
     { id: 'appearance', label: 'Tema & Tampilan', icon: Palette },
     { id: 'allowlist', label: 'Allowlist Email Internal', icon: Key, count: allowlist.length },
     { id: 'users', label: 'Pengguna Terdaftar & Peran', icon: Users, count: profiles.length },
+    { id: 'maintenance', label: 'Mode Pemeliharaan', icon: Wrench },
     { id: 'diagnostics', label: 'Koneksi & Status Sistem', icon: Activity },
     { id: 'logs', label: 'Audit Log Perubahan', icon: History, count: auditLogs.length },
   ];
@@ -175,9 +213,41 @@ export function SettingsPage() {
       <div>
         <h1 style={{ fontSize: '1.25rem', fontWeight: 700 }}>Pengguna &amp; Pengaturan Sistem</h1>
         <p style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>
-          Manajemen allowlist Google OAuth, hak akses role internal, status Supabase, dan audit log
+          Manajemen allowlist Google OAuth, hak akses role internal, status Supabase, audit log, dan mode pemeliharaan
         </p>
       </div>
+
+      {/* Maintenance Mode Banner — shown when active */}
+      {maintenanceMode && (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px',
+            padding: '14px 20px',
+            backgroundColor: 'rgba(239, 68, 68, 0.08)',
+            border: '1px solid rgba(239, 68, 68, 0.35)',
+            borderRadius: 'var(--radius-lg)',
+          }}
+        >
+          <Wrench size={18} style={{ color: '#ef4444', flexShrink: 0 }} />
+          <div style={{ flex: 1 }}>
+            <strong style={{ color: '#ef4444', fontSize: '0.875rem' }}>Mode Pemeliharaan Aktif</strong>
+            <div style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
+              Pengguna non-admin (viewer, sensei_staff, dll.) tidak dapat mengakses atau mengubah data saat ini.
+            </div>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            icon={Unlock}
+            onClick={() => requestToggleMaintenance(false)}
+            isLoading={maintenanceLoading}
+          >
+            Nonaktifkan
+          </Button>
+        </div>
+      )}
 
       {/* Tabs */}
       <div style={{ backgroundColor: 'var(--bg-surface)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-subtle)' }}>
@@ -397,7 +467,7 @@ export function SettingsPage() {
                         <span className="font-mono text-sm" style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
                           {item.email}
                         </span>
-                        <Badge variant="neutral">
+                        <Badge variant={item.default_role === 'viewer' ? 'warning' : 'neutral'}>
                           Peran Awal: {ROLE_LABELS[item.default_role] || item.default_role}
                         </Badge>
                       </div>
@@ -460,7 +530,7 @@ export function SettingsPage() {
                         <strong style={{ color: 'var(--text-primary)' }}>
                           {p.full_name || p.email}
                         </strong>
-                        <Badge variant={p.role === 'admin' ? 'info' : 'neutral'}>
+                        <Badge variant={p.role === 'admin' ? 'info' : p.role === 'viewer' ? 'warning' : 'neutral'}>
                           {ROLE_LABELS[p.role] || p.role}
                         </Badge>
                         <Badge variant={p.is_active ? 'success' : 'danger'}>
@@ -490,11 +560,153 @@ export function SettingsPage() {
                 ))}
               </div>
             )}
+
+            {/* Viewer Role Info */}
+            <div
+              style={{
+                marginTop: '20px',
+                padding: '14px 18px',
+                borderRadius: 'var(--radius-md)',
+                border: '1px solid var(--border-subtle)',
+                backgroundColor: 'var(--bg-surface-elevated)',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                <Eye size={16} style={{ color: 'var(--text-tertiary)' }} />
+                <strong style={{ fontSize: '0.875rem' }}>Tentang Akun Viewer (Hanya Lihat)</strong>
+              </div>
+              <p style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                Role <strong>Viewer</strong> memberikan akses <em>read-only</em> — pengguna dapat melihat data siswa,
+                laporan, dan dashboard, namun tidak bisa menambah, mengubah, atau menghapus data apapun.
+                Cocok untuk keperluan monitoring eksternal atau tamu staf sementara.
+                Tambahkan email viewer ke Allowlist dengan role <em>Viewer (Hanya Lihat)</em>.
+              </p>
+            </div>
           </CardBody>
         </Card>
       )}
 
-      {/* TAB 3: Diagnostics */}
+      {/* TAB 3: Maintenance Mode */}
+      {activeTab === 'maintenance' && (
+        <Card>
+          <CardHeader
+            title="Mode Pemeliharaan Sistem"
+            subtitle="Blokir akses pengguna non-admin sementara saat proses input data massal atau migrasi"
+          />
+          <CardBody style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            {/* Current Status */}
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '20px 24px',
+                borderRadius: 'var(--radius-lg)',
+                border: `2px solid ${maintenanceMode ? 'rgba(239, 68, 68, 0.4)' : 'rgba(16, 185, 129, 0.4)'}`,
+                backgroundColor: maintenanceMode
+                  ? 'rgba(239, 68, 68, 0.06)'
+                  : 'rgba(16, 185, 129, 0.06)',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                {maintenanceMode ? (
+                  <Lock size={28} style={{ color: '#ef4444' }} />
+                ) : (
+                  <Unlock size={28} style={{ color: '#10b981' }} />
+                )}
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: '1rem' }}>
+                    {maintenanceMode ? 'Mode Pemeliharaan: AKTIF' : 'Mode Pemeliharaan: NONAKTIF'}
+                  </div>
+                  <div style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                    {maintenanceMode
+                      ? 'Sistem sedang dikunci. Hanya admin yang bisa mengakses. Pengguna lain akan melihat halaman pemeliharaan.'
+                      : 'Sistem berjalan normal. Semua pengguna aktif dapat mengakses sesuai perannya.'}
+                  </div>
+                </div>
+              </div>
+
+              {isAdmin && (
+                <Button
+                  variant={maintenanceMode ? 'outline' : 'primary'}
+                  icon={maintenanceMode ? Unlock : Lock}
+                  onClick={() => requestToggleMaintenance(!maintenanceMode)}
+                  isLoading={maintenanceLoading}
+                  style={{
+                    borderColor: maintenanceMode ? '#ef4444' : undefined,
+                    color: maintenanceMode ? '#ef4444' : undefined,
+                    flexShrink: 0,
+                  }}
+                >
+                  {maintenanceMode ? 'Nonaktifkan Pemeliharaan' : 'Aktifkan Mode Pemeliharaan'}
+                </Button>
+              )}
+            </div>
+
+            {/* Explanation */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <h4 style={{ fontSize: '0.9375rem', fontWeight: 600 }}>Cara Kerja Mode Pemeliharaan</h4>
+              {[
+                {
+                  icon: Lock,
+                  title: 'Mengaktifkan Mode Pemeliharaan',
+                  desc: 'Semua pengguna selain Administrator akan melihat halaman "Sistem Sedang Pemeliharaan" dan tidak bisa mengakses data. Admin tetap dapat login dan mengelola sistem.',
+                },
+                {
+                  icon: Users,
+                  title: 'Kapan Digunakan?',
+                  desc: 'Gunakan saat melakukan impor data massal dari spreadsheet, perubahan skema database, atau saat staf admin perlu menginput data baru tanpa gangguan dari pengguna lain.',
+                },
+                {
+                  icon: Unlock,
+                  title: 'Menonaktifkan Mode Pemeliharaan',
+                  desc: 'Klik "Nonaktifkan Pemeliharaan" untuk mengembalikan akses normal ke semua pengguna. Perubahan berlaku segera secara realtime.',
+                },
+              ].map((item, i) => {
+                const Icon = item.icon;
+                return (
+                  <div
+                    key={i}
+                    style={{
+                      display: 'flex',
+                      gap: '14px',
+                      padding: '14px 18px',
+                      borderRadius: 'var(--radius-md)',
+                      border: '1px solid var(--border-subtle)',
+                      backgroundColor: 'var(--bg-surface-elevated)',
+                    }}
+                  >
+                    <Icon size={18} style={{ color: 'var(--text-tertiary)', marginTop: '1px', flexShrink: 0 }} />
+                    <div>
+                      <strong style={{ fontSize: '0.875rem' }}>{item.title}</strong>
+                      <p style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', marginTop: '4px', lineHeight: 1.5 }}>
+                        {item.desc}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {!isAdmin && (
+              <div
+                style={{
+                  padding: '12px 16px',
+                  borderRadius: 'var(--radius-md)',
+                  backgroundColor: 'var(--bg-app)',
+                  border: '1px solid var(--border-subtle)',
+                  fontSize: '0.8125rem',
+                  color: 'var(--text-tertiary)',
+                }}
+              >
+                Hanya Administrator yang dapat mengaktifkan atau menonaktifkan Mode Pemeliharaan.
+              </div>
+            )}
+          </CardBody>
+        </Card>
+      )}
+
+      {/* TAB 4: Diagnostics */}
       {activeTab === 'diagnostics' && (
         <Card>
           <CardHeader
@@ -587,7 +799,7 @@ export function SettingsPage() {
         </Card>
       )}
 
-      {/* TAB 4: Audit Logs */}
+      {/* TAB 5: Audit Logs */}
       {activeTab === 'logs' && (
         <Card>
           <CardHeader
@@ -744,6 +956,21 @@ export function SettingsPage() {
         message={`Apakah Anda yakin ingin menghapus "${deleteTarget?.email}" dari daftar allowlist? Pengguna ini tidak akan bisa login ke aplikasi lagi.`}
         confirmText="Ya, Hapus"
         variant="danger"
+      />
+
+      {/* Maintenance Mode Confirmation */}
+      <ConfirmModal
+        isOpen={isConfirmMaintenanceOpen}
+        onClose={() => setIsConfirmMaintenanceOpen(false)}
+        onConfirm={confirmToggleMaintenance}
+        title={pendingMaintenanceState ? 'Aktifkan Mode Pemeliharaan?' : 'Nonaktifkan Mode Pemeliharaan?'}
+        message={
+          pendingMaintenanceState
+            ? 'Mengaktifkan Mode Pemeliharaan akan memblokir akses semua pengguna non-admin (viewer, sensei_staff, dll.) dari sistem. Hanya Administrator yang dapat masuk. Lanjutkan?'
+            : 'Menonaktifkan Mode Pemeliharaan akan memulihkan akses normal untuk semua pengguna. Pastikan proses input data sudah selesai. Lanjutkan?'
+        }
+        confirmText={pendingMaintenanceState ? 'Ya, Aktifkan Pemeliharaan' : 'Ya, Buka Kembali Akses'}
+        variant={pendingMaintenanceState ? 'danger' : 'default'}
       />
     </div>
   );

@@ -7,7 +7,8 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { SupabaseConfigAlert } from '../../components/feedback/SupabaseConfigAlert';
 import { CookiePolicyModal } from './CookiePolicyModal';
-import { Lock, Mail, User, Info, UserPlus, LogIn, Sun, Moon, ArrowLeft } from 'lucide-react';
+import { settingsService } from '../../services/settingsService';
+import { Lock, Mail, User, Info, UserPlus, LogIn, Sun, Moon, ArrowLeft, Wrench } from 'lucide-react';
 
 export function LoginPage() {
   const {
@@ -25,6 +26,7 @@ export function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
 
+  const [maintenanceMode, setMaintenanceMode] = useState(false);
   const [authMethod, setAuthMethod] = useState('google'); // 'google' as primary
   const [isRegisterMode, setIsRegisterMode] = useState(false);
 
@@ -34,6 +36,21 @@ export function LoginPage() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+
+  // Check maintenance mode
+  React.useEffect(() => {
+    let cancelled = false;
+    async function checkMaintenance() {
+      try {
+        const isMaint = await settingsService.getMaintenanceMode();
+        if (!cancelled) setMaintenanceMode(isMaint);
+      } catch {
+        // ignore
+      }
+    }
+    checkMaintenance();
+    return () => { cancelled = true; };
+  }, []);
 
   // Forgot password
   const [showForgotModal, setShowForgotModal] = useState(false);
@@ -182,6 +199,32 @@ export function LoginPage() {
       <div style={{ width: '100%', maxWidth: '440px' }}>
         {/* Supabase status warning if not yet configured */}
         {!isSupabaseConfigured && <SupabaseConfigAlert />}
+
+        {/* Maintenance Alert Card on Login Page */}
+        {maintenanceMode && (
+          <div
+            style={{
+              marginBottom: '16px',
+              padding: '14px 18px',
+              backgroundColor: 'rgba(245, 158, 11, 0.1)',
+              border: '1px solid rgba(245, 158, 11, 0.35)',
+              borderRadius: 'var(--radius-lg)',
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: '12px',
+            }}
+          >
+            <Wrench size={20} style={{ color: '#f59e0b', flexShrink: 0, marginTop: '2px' }} />
+            <div>
+              <strong style={{ fontSize: '0.875rem', color: 'var(--text-primary)', display: 'block' }}>
+                Website Sedang Dalam Pemeliharaan
+              </strong>
+              <span style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', marginTop: '2px', display: 'block', lineHeight: 1.4 }}>
+                Mohon kembali lagi nanti. Hanya akun <strong>Administrator</strong> yang diizinkan masuk untuk menginput data saat ini.
+              </span>
+            </div>
+          </div>
+        )}
 
         <div
           style={{

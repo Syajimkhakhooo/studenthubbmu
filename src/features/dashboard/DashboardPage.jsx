@@ -265,32 +265,32 @@ export function DashboardPage() {
   // Donut 1: Pipeline Perjalanan & Kesiapan Siswa
   const pipelineDonutData = useMemo(() => {
     return [
-      { label: 'Sedang Belajar (Aktif)', value: stats.activeLearning, color: '#3b82f6', route: '/student-journey' },
-      { label: 'Siap Interview', value: stats.readyInterview, color: '#06b6d4', route: '/student-journey' },
-      { label: 'Lolos Seleksi Kerja', value: stats.passedJobSelection, color: '#8b5cf6', route: '/student-journey' },
-      { label: 'Menunggu Kontrak', value: stats.waitingContract, color: '#f59e0b', route: '/student-journey' },
-      { label: 'Sedang Menunggu COE', value: stats.waitingCoe, color: '#f97316', route: '/student-journey' },
-      { label: 'Siap Berangkat (Visa/COE)', value: stats.readyDeparture, color: '#10b981', route: '/student-journey' },
-      { label: 'Sudah di Jepang', value: stats.departed, color: '#14b8a6', route: '/student-journey' },
-      { label: 'Izin Cuti / Nonaktif', value: stats.onLeave, color: '#ef4444', route: '/student-journey' },
+      { label: 'Sedang Belajar (Aktif)', value: stats.activeLearning, color: '#3b82f6', stage: 'belajar' },
+      { label: 'Siap Interview', value: stats.readyInterview, color: '#06b6d4', stage: 'siap_interview' },
+      { label: 'Lolos Seleksi Kerja', value: stats.passedJobSelection, color: '#8b5cf6', stage: 'lolos_seleksi' },
+      { label: 'Menunggu Kontrak', value: stats.waitingContract, color: '#f59e0b', stage: 'menunggu_kontrak' },
+      { label: 'Sedang Menunggu COE', value: stats.waitingCoe, color: '#f97316', stage: 'menunggu_coe' },
+      { label: 'Siap Berangkat (Visa/COE)', value: stats.readyDeparture, color: '#10b981', stage: 'siap_berangkat' },
+      { label: 'Sudah di Jepang', value: stats.departed, color: '#14b8a6', stage: 'sudah_berangkat' },
+      { label: 'Izin Cuti / Nonaktif', value: stats.onLeave, color: '#ef4444', stage: 'cuti' },
     ];
   }, [stats]);
 
   // Donut 2: Komposisi Program Siswa BMU
   const programDonutData = useMemo(() => {
     return [
-      { label: 'Tokutei Ginou (SSW)', value: stats.programDistribution.ssw, color: '#3b82f6' },
-      { label: 'Magang / Ikushei Shuro', value: stats.programDistribution.internship, color: '#10b981' },
-      { label: 'Program Lainnya', value: stats.programDistribution.other, color: '#8b5cf6' },
+      { label: 'Tokutei Ginou (SSW)', value: stats.programDistribution.ssw, color: '#3b82f6', program: 'SSW' },
+      { label: 'Magang / Ikushei Shuro', value: stats.programDistribution.internship, color: '#10b981', program: 'TG_INTERNSHIP' },
+      { label: 'Program Lainnya', value: stats.programDistribution.other, color: '#8b5cf6', program: 'OTHER' },
     ];
   }, [stats.programDistribution]);
 
   // Donut 3: Status Kelengkapan & Verifikasi Dokumen
   const docsDonutData = useMemo(() => {
     return [
-      { label: 'Terverifikasi Valid', value: stats.docsSummary.verified, color: '#10b981' },
-      { label: 'Menunggu Verifikasi', value: stats.docsSummary.uploaded, color: '#f59e0b' },
-      { label: 'Belum Tersedia (Missing)', value: stats.docsSummary.missing, color: '#ef4444' },
+      { label: 'Terverifikasi Valid', value: stats.docsSummary.verified, color: '#10b981', status: 'verified' },
+      { label: 'Menunggu Verifikasi', value: stats.docsSummary.uploaded, color: '#f59e0b', status: 'uploaded' },
+      { label: 'Belum Tersedia (Missing)', value: stats.docsSummary.missing, color: '#ef4444', status: 'missing' },
     ];
   }, [stats.docsSummary]);
 
@@ -637,7 +637,7 @@ export function DashboardPage() {
                     thickness={26}
                     centerLabel="Total Siswa"
                     centerSubtext="Aktif di Pipeline"
-                    onSliceClick={() => navigate('/student-journey')}
+                    onSliceClick={(slice) => navigate(`/student-journey?stage=${slice?.stage || 'all'}`)}
                   />
                   <div
                     style={{
@@ -673,7 +673,7 @@ export function DashboardPage() {
                     thickness={26}
                     centerLabel="Total Siswa"
                     centerSubtext="Program Terdaftar"
-                    onSliceClick={() => navigate('/students')}
+                    onSliceClick={(slice) => navigate(slice?.program ? `/students?program=${slice.program}` : '/students')}
                   />
                   <div
                     style={{
@@ -709,7 +709,7 @@ export function DashboardPage() {
                     thickness={26}
                     centerLabel="Total Berkas"
                     centerSubtext="Semua Dokumen Siswa"
-                    onSliceClick={() => navigate('/documents')}
+                    onSliceClick={(slice) => navigate(slice?.status ? `/documents?status=${slice.status}` : '/documents')}
                   />
                   <div
                     style={{

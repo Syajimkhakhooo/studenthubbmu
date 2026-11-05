@@ -164,4 +164,77 @@ export const settingsService = {
       return [];
     }
   },
+
+  /**
+   * Get a specific system setting by key
+   */
+  async getSetting(key) {
+    if (!isSupabaseConfigured) return null;
+    try {
+      const { data, error } = await supabase
+        .from('system_settings')
+        .select('*')
+        .eq('setting_key', key)
+        .maybeSingle();
+
+      if (error) throw error;
+      return data;
+    } catch (err) {
+      console.error(`Error fetching setting "${key}":`, err);
+      return null;
+    }
+  },
+
+  /**
+   * Update a system setting value
+   */
+  async updateSetting(key, value, actorProfile) {
+    if (!isSupabaseConfigured) throw new Error('Supabase belum terhubung.');
+
+    try {
+      const { data, error } = await supabase
+        .from('system_settings')
+        .update({
+          setting_value: String(value),
+          updated_by: actorProfile?.id || null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('setting_key', key)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      await supabase.from('audit_logs').insert([
+        {
+          actor_id: actorProfile?.id || null,
+          actor_email: actorProfile?.email || 'system',
+          action: 'UPDATE_SYSTEM_SETTING',
+          entity_type: 'system_settings',
+          entity_id: data.id,
+          change_summary: `Mengubah pengaturan sistem "${key}" menjadi: ${value}`,
+        },
+      ]);
+
+      return data;
+    } catch (err) {
+      console.error(`Error updating setting "${key}":`, err);
+      throw err;
+    }
+  },
+
+  /**
+   * Get current maintenance mode status
+   */
+  async getMaintenanceMode() {
+    const setting = await this.getSetting('maintenance_mode');
+    return setting?.setting_value === 'true';
+  },
+
+  /**
+   * Toggle maintenance mode on/off
+   */
+  async setMaintenanceMode(enabled, actorProfile) {
+    return this.updateSetting('maintenance_mode', enabled ? 'true' : 'false', actorProfile);
+  },
 };

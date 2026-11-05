@@ -53,23 +53,31 @@ export function StudentImportModal({ isOpen, onClose, onSuccess }) {
 
   /**
    * Helper: Parse Excel date or string into YYYY-MM-DD
+   *
+   * With XLSX.read({ cellDates: true }) + sheet_to_json({ raw: true }):
+   *   - Date-formatted cells  → JS Date object  (handled by instanceof Date branch)
+   *   - Number cells          → Excel serial     (handled by typeof number branch)
+   *   - Text cells typed manually → plain string (handled by string branches below)
    */
   const parseDateValue = (raw) => {
     if (!raw) return null;
+
+    // 1. JS Date object (from cellDates:true + raw:true)
     if (raw instanceof Date) {
       if (isNaN(raw.getTime())) return null;
-      // Format as local YYYY-MM-DD (avoid UTC offset shifting the date)
+      // Use local date parts to avoid UTC timezone shift
       const y = raw.getFullYear();
       const m = String(raw.getMonth() + 1).padStart(2, '0');
       const d = String(raw.getDate()).padStart(2, '0');
       return `${y}-${m}-${d}`;
     }
+
+    // 2. Excel serial number (date stored as number without Date formatting)
     if (typeof raw === 'number') {
-      // Excel serial date: days since 1899-12-30 (accounting for Lotus 1-2-3 bug)
       try {
+        // Excel epoch: 1899-12-30 (accounting for the Lotus 1-2-3 leap year bug)
         const excelEpoch = new Date(Date.UTC(1899, 11, 30));
-        const msPerDay = 86400000;
-        const dateObj = new Date(excelEpoch.getTime() + raw * msPerDay);
+        const dateObj = new Date(excelEpoch.getTime() + raw * 86400000);
         if (!isNaN(dateObj.getTime())) {
           const y = dateObj.getUTCFullYear();
           const m = String(dateObj.getUTCMonth() + 1).padStart(2, '0');
@@ -80,27 +88,30 @@ export function StudentImportModal({ isOpen, onClose, onSuccess }) {
         return null;
       }
     }
+
     const str = String(raw).trim();
-    // Match YYYY-MM-DD
+
+    // 3. ISO format: YYYY-MM-DD (exact match, return as-is)
     if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
-    // Match DD/MM/YYYY or DD-MM-YYYY (Indonesian format)
-    const dmy = str.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/);
-    if (dmy) {
-      const day = dmy[1].padStart(2, '0');
-      const month = dmy[2].padStart(2, '0');
-      const year = dmy[3];
-      return `${year}-${month}-${day}`;
+
+    // 4. Indonesian format: DD/MM/YYYY or DD-MM-YYYY
+    //    Rule: if first number <= 31 and second number <= 12, treat as DD/MM
+    const parts = str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+    if (parts) {
+      const n1 = parseInt(parts[1], 10);
+      const n2 = parseInt(parts[2], 10);
+      const year = parts[3];
+      // Disambiguate: if first part > 12 it must be a day (DD/MM/YYYY)
+      // If first part <= 12 we assume Indonesian DD/MM/YYYY (most common in BMU)
+      const day = String(n1).padStart(2, '0');
+      const month = String(n2).padStart(2, '0');
+      // Sanity check: month must be 1-12, day must be 1-31
+      if (n2 >= 1 && n2 <= 12 && n1 >= 1 && n1 <= 31) {
+        return `${year}-${month}-${day}`;
+      }
     }
-    // Match M/D/YYYY (SheetJS raw:false default output format, US locale)
-    const mdy = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-    if (mdy) {
-      // SheetJS outputs month/day/year in US format
-      const month = mdy[1].padStart(2, '0');
-      const day = mdy[2].padStart(2, '0');
-      const year = mdy[3];
-      return `${year}-${month}-${day}`;
-    }
-    // Try native Date parsing as last resort
+
+    // 5. Last resort: native Date parse (handles "1 Jan 2024", "Jan 2024" etc.)
     const native = new Date(str);
     if (!isNaN(native.getTime()) && str.length >= 8) {
       const y = native.getFullYear();
@@ -108,8 +119,10 @@ export function StudentImportModal({ isOpen, onClose, onSuccess }) {
       const d = String(native.getDate()).padStart(2, '0');
       return `${y}-${m}-${d}`;
     }
+
     return null;
   };
+
 
   /**
    * Normalize gender to 'L' or 'P'
@@ -340,8 +353,9 @@ export function StudentImportModal({ isOpen, onClose, onSuccess }) {
         const firstSheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[firstSheetName];
 
-        // raw:false so dates come as Date objects (thanks to cellDates:true), other cells as strings
-        const json = XLSX.utils.sheet_to_json(worksheet, { defval: '', raw: false });
+        // raw:true preserves Date objects for date cells (cellDates:true), numbers for numeric cells
+        // This avoids SheetJS converting dates to US-locale strings like "10/1/2024"
+        const json = XLSX.utils.sheet_to_json(worksheet, { defval: '', raw: true });
         if (!json || json.length === 0) {
           toastError('File Excel tidak memiliki baris data atau kosong.');
           setParsedRows([]);
@@ -380,7 +394,7 @@ export function StudentImportModal({ isOpen, onClose, onSuccess }) {
         program: 'SSW',
         tanggal_lahir: '2002-05-14',
         tempat_lahir: 'Banyumas',
-        tanggal_masuk: '2024-10-01',
+        tanggal_masuk: '2024-03-01',
         agama: 'Islam',
         golongan_darah: 'O',
         tinggi_cm: 170,
@@ -406,7 +420,7 @@ export function StudentImportModal({ isOpen, onClose, onSuccess }) {
         program: 'SSW',
         tanggal_lahir: '2003-08-20',
         tempat_lahir: 'Purbalingga',
-        tanggal_masuk: '2024-10-01',
+        tanggal_masuk: '2024-06-15',
         agama: 'Islam',
         golongan_darah: 'A',
         tinggi_cm: 158,
@@ -432,7 +446,7 @@ export function StudentImportModal({ isOpen, onClose, onSuccess }) {
         program: 'TG_INTERNSHIP',
         tanggal_lahir: '2001-11-03',
         tempat_lahir: 'Kebumen',
-        tanggal_masuk: '2024-10-01',
+        tanggal_masuk: '2024-09-10',
         agama: 'Islam',
         golongan_darah: 'B',
         tinggi_cm: 174,
