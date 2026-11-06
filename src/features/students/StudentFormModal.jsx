@@ -303,7 +303,7 @@ export function StudentFormModal({ isOpen, onClose, student = null, onSuccess })
               onChange={(e) => handleChange('emergency_contact_phone', e.target.value)}
               placeholder="081298765432"
             />
-            <div style={{ gridColumn: 'span 2' }}>
+            <div className="col-span-2 md-col-span-1">
               <Textarea
                 label="Alamat Domisili Sekarang"
                 value={formData.domicile_address}

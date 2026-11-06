@@ -38,12 +38,15 @@ export function BottomNav() {
       className="hide-on-desktop"
       aria-label="Navigasi Menu Mobile"
       style={{
-        flexShrink: 0,
+        position: 'fixed',
+        bottom: 0,
+        left: 0,
+        right: 0,
         backgroundColor: 'var(--bg-surface)',
         borderTop: '1px solid var(--border-subtle)',
-        boxShadow: 'var(--shadow-sm)',
+        boxShadow: '0 -4px 16px rgba(0, 0, 0, 0.08)',
         paddingBottom: 'env(safe-area-inset-bottom, 0px)',
-        zIndex: 90,
+        zIndex: 9999,
       }}
     >
       <div

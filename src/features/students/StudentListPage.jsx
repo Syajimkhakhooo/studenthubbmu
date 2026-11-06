@@ -557,7 +557,7 @@ export function StudentListPage() {
           </p>
         </div>
 
-        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+        <div className="student-header-actions" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
           {activeTab === 'trash' ? (
             // ── Trash tab actions ──────────────────────────────────────────
             <>
@@ -725,7 +725,7 @@ export function StudentListPage() {
           )}
 
           <div className="grid grid-cols-4 gap-3 md-grid-cols-1">
-            <div style={{ gridColumn: 'span 2' }}>
+            <div className="col-span-2 md-col-span-1">
               <Input
                 placeholder="Cari berdasarkan No. ID Siswa atau Nama Lengkap..."
                 value={searchQuery}

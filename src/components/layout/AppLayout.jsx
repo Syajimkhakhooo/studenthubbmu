@@ -23,7 +23,7 @@ export function AppLayout() {
   };
 
   return (
-    <div style={{ display: 'flex', height: '100vh', width: '100vw', overflow: 'hidden' }}>
+    <div style={{ display: 'flex', height: '100dvh', width: '100vw', overflow: 'hidden' }}>
       {/* Desktop Sidebar */}
       <div className="hide-on-mobile" style={{ height: '100%', flexShrink: 0 }}>
         <Sidebar
@@ -40,6 +40,7 @@ export function AppLayout() {
         />
 
         <main
+          className="app-main-content"
           style={{
             flex: 1,
             overflowY: 'auto',

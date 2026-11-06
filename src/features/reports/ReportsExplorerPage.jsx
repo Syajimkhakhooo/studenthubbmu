@@ -446,7 +446,7 @@ export function ReportsExplorerPage() {
         </CardHeader>
         <CardBody style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           {/* Row 1: Program, Kelas, Gender, Minat, Dokumen */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '12px' }}>
+          <div className="grid grid-cols-5 gap-3 md-grid-cols-1">
             <Select
               label="Program BMU"
               value={draftFilters.programType}
@@ -788,7 +788,7 @@ export function ReportsExplorerPage() {
               <div
                 style={{
                   display: 'grid',
-                  gridTemplateColumns: 'repeat(2, 1fr)',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
                   gap: '8px',
                   marginTop: '8px',
                   maxHeight: '200px',

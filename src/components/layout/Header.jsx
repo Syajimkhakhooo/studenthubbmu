@@ -33,16 +33,26 @@ export function Header({ pageTitle }) {
       }}
     >
       {/* Left: Mobile Brand & Page Title */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, flex: 1 }}>
         <img
           src="/logo.png"
           alt="BMU"
           className="hide-on-desktop"
-          style={{ width: '28px', height: '28px', objectFit: 'contain' }}
+          style={{ width: '28px', height: '28px', objectFit: 'contain', flexShrink: 0 }}
         />
 
         {pageTitle && (
-          <h2 style={{ fontSize: '1.0625rem', fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>
+          <h2
+            style={{
+              fontSize: '1rem',
+              fontWeight: 600,
+              color: 'var(--text-primary)',
+              margin: 0,
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+            }}
+          >
             {pageTitle}
           </h2>
         )}
