@@ -87,7 +87,7 @@ export function StudentDetailPage() {
     { id: 'pengalaman', label: '4. Pengalaman Kerja', icon: Briefcase, count: student.work_experiences?.length },
     { id: 'personal', label: '5. Profil Fisik', icon: Activity },
     { id: 'keluarga', label: '6. Keluarga', icon: Users, count: student.family_members?.length },
-    ...(!isViewer ? [{ id: 'dokumen', label: '7. Dokumen', icon: FileCheck2 }] : []),
+    { id: 'dokumen', label: '7. Dokumen', icon: FileCheck2 },
     { id: 'status', label: '8. Status & Riwayat', icon: Route },
     ...(!isViewer ? [{ id: 'finansial', label: '9. Administrasi Biaya', icon: DollarSign }] : []),
   ];
@@ -173,9 +173,18 @@ export function StudentDetailPage() {
           <span style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', marginRight: '4px' }}>
             Status Saat Ini:
           </span>
-          <Badge variant={learningMeta.badge}>{learningMeta.label}</Badge>
-          <Badge variant={jobMeta.badge}>{jobMeta.label}</Badge>
-          <Badge variant={depMeta.badge}>{depMeta.label}</Badge>
+          {student.student_journey?.departure_status === 'sudah_berangkat' ? (
+            <Badge variant="success">Sudah di Jepang</Badge>
+          ) : (
+            <>
+              <Badge variant={learningMeta.badge}>{learningMeta.label}</Badge>
+              {student.student_journey?.learning_status === 'lulus' ? (
+                <Badge variant="success">Siap Mengikuti Interview</Badge>
+              ) : null}
+              <Badge variant={jobMeta.badge}>{jobMeta.label}</Badge>
+              <Badge variant={depMeta.badge}>{depMeta.label}</Badge>
+            </>
+          )}
           {student.student_journey?.matched_company_name && (
             <Badge variant="neutral">
               Perusahaan: {student.student_journey.matched_company_name}
@@ -191,15 +200,15 @@ export function StudentDetailPage() {
 
       {/* Active Tab Content */}
       <div>
-        {activeTab === 'identitas' && <TabIdentity student={student} onUpdate={fetchDetail} />}
-        {activeTab === 'pendidikan' && <TabEducation student={student} onUpdate={fetchDetail} />}
-        {activeTab === 'bahasa' && <TabLanguageCert student={student} onUpdate={fetchDetail} />}
-        {activeTab === 'pengalaman' && <TabWorkExperience student={student} onUpdate={fetchDetail} />}
-        {activeTab === 'personal' && <TabPersonalProfile student={student} onUpdate={fetchDetail} />}
-        {activeTab === 'keluarga' && <TabFamily student={student} onUpdate={fetchDetail} />}
-        {activeTab === 'dokumen' && <TabDocuments student={student} onUpdate={fetchDetail} />}
-        {activeTab === 'status' && <TabJourneyStatus student={student} onUpdate={fetchDetail} />}
-        {activeTab === 'finansial' && <TabFinances student={student} onUpdate={fetchDetail} />}
+        {activeTab === 'identitas' && <TabIdentity student={student} onUpdate={fetchDetail} isViewer={isViewer} />}
+        {activeTab === 'pendidikan' && <TabEducation student={student} onUpdate={fetchDetail} isViewer={isViewer} />}
+        {activeTab === 'bahasa' && <TabLanguageCert student={student} onUpdate={fetchDetail} isViewer={isViewer} />}
+        {activeTab === 'pengalaman' && <TabWorkExperience student={student} onUpdate={fetchDetail} isViewer={isViewer} />}
+        {activeTab === 'personal' && <TabPersonalProfile student={student} onUpdate={fetchDetail} isViewer={isViewer} />}
+        {activeTab === 'keluarga' && <TabFamily student={student} onUpdate={fetchDetail} isViewer={isViewer} />}
+        {activeTab === 'dokumen' && <TabDocuments student={student} onUpdate={fetchDetail} isViewer={isViewer} />}
+        {activeTab === 'status' && <TabJourneyStatus student={student} onUpdate={fetchDetail} isViewer={isViewer} />}
+        {activeTab === 'finansial' && <TabFinances student={student} onUpdate={fetchDetail} isViewer={isViewer} />}
       </div>
 
       {/* Edit Basic Info Modal */}

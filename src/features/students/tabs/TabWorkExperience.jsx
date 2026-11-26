@@ -5,10 +5,13 @@ import { Input, Textarea } from '../../../components/ui/Input';
 import { Modal } from '../../../components/ui/Modal';
 import { formatDate } from '../../../utils/formatters';
 import { studentService } from '../../../services/studentService';
+import { useAuth } from '../../../hooks/useAuth';
 import { useToast } from '../../../hooks/useToast';
 import { Briefcase, Plus, Trash2, Edit2 } from 'lucide-react';
 
-export function TabWorkExperience({ student, onUpdate }) {
+export function TabWorkExperience({ student, onUpdate, isViewer: isViewerProp }) {
+  const { profile, isViewer: authViewer } = useAuth();
+  const isReadOnly = isViewerProp ?? (authViewer || profile?.role === 'viewer');
   const { success, error: toastError } = useToast();
   const [workList, setWorkList] = useState(student?.work_experiences || []);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -98,9 +101,11 @@ export function TabWorkExperience({ student, onUpdate }) {
         title="Pengalaman Kerja Terdahulu"
         subtitle="Riwayat pekerjaan profesional di Indonesia atau luar negeri"
       >
-        <Button variant="secondary" size="sm" icon={Plus} onClick={openAdd}>
-          Tambah Pengalaman
-        </Button>
+        {!isReadOnly && (
+          <Button variant="secondary" size="sm" icon={Plus} onClick={openAdd}>
+            Tambah Pengalaman
+          </Button>
+        )}
       </CardHeader>
       <CardBody>
         {workList.length === 0 ? (
@@ -153,10 +158,12 @@ export function TabWorkExperience({ student, onUpdate }) {
                   )}
                 </div>
 
-                <div style={{ display: 'flex', gap: '6px' }}>
-                  <Button variant="ghost" size="sm" icon={Edit2} onClick={() => openEdit(item, idx)} />
-                  <Button variant="ghost" size="sm" icon={Trash2} onClick={() => handleDelete(idx)} />
-                </div>
+                {!isReadOnly && (
+                  <div style={{ display: 'flex', gap: '6px' }}>
+                    <Button variant="ghost" size="sm" icon={Edit2} onClick={() => openEdit(item, idx)} />
+                    <Button variant="ghost" size="sm" icon={Trash2} onClick={() => handleDelete(idx)} />
+                  </div>
+                )}
               </div>
             ))}
           </div>

@@ -156,27 +156,28 @@ export function LoginPage() {
         flexDirection: 'column',
         justifyContent: 'center',
         alignItems: 'center',
-        padding: '16px',
+        padding: '12px',
         position: 'relative',
         overflowY: 'auto',
+        boxSizing: 'border-box',
       }}
     >
       {/* Floating Theme Switcher */}
-      <div style={{ position: 'absolute', top: '20px', right: '20px' }}>
+      <div style={{ position: 'absolute', top: '12px', right: '12px' }}>
         <button
           type="button"
           onClick={toggleTheme}
           title={isDark ? 'Beralih ke Tema Terang (Putih)' : 'Beralih ke Tema Gelap (Hitam)'}
           style={{
             color: 'var(--text-secondary)',
-            padding: '8px 12px',
+            padding: '6px 10px',
             borderRadius: 'var(--radius-full)',
             border: '1px solid var(--border-default)',
             backgroundColor: 'var(--bg-surface)',
             display: 'flex',
             alignItems: 'center',
-            gap: '8px',
-            fontSize: '0.8125rem',
+            gap: '6px',
+            fontSize: '0.75rem',
             fontWeight: 500,
             cursor: 'pointer',
             boxShadow: 'var(--shadow-sm)',
@@ -185,19 +186,19 @@ export function LoginPage() {
         >
           {isDark ? (
             <>
-              <Sun size={15} style={{ color: '#e3b341' }} />
+              <Sun size={14} style={{ color: '#e3b341' }} />
               <span>Tema Terang</span>
             </>
           ) : (
             <>
-              <Moon size={15} style={{ color: '#4f46e5' }} />
+              <Moon size={14} style={{ color: '#4f46e5' }} />
               <span>Tema Gelap</span>
             </>
           )}
         </button>
       </div>
 
-      <div style={{ width: '100%', maxWidth: '360px' }}>
+      <div style={{ width: '100%', maxWidth: '350px' }}>
         {/* Supabase status warning if not yet configured */}
         {!isSupabaseConfigured && <SupabaseConfigAlert />}
 
@@ -205,22 +206,22 @@ export function LoginPage() {
         {maintenanceMode && (
           <div
             style={{
-              marginBottom: '14px',
-              padding: '12px 14px',
+              marginBottom: '10px',
+              padding: '10px 12px',
               backgroundColor: 'rgba(245, 158, 11, 0.1)',
               border: '1px solid rgba(245, 158, 11, 0.35)',
               borderRadius: 'var(--radius-md)',
               display: 'flex',
               alignItems: 'flex-start',
-              gap: '10px',
+              gap: '8px',
             }}
           >
-            <Wrench size={18} style={{ color: '#f59e0b', flexShrink: 0, marginTop: '2px' }} />
+            <Wrench size={16} style={{ color: '#f59e0b', flexShrink: 0, marginTop: '2px' }} />
             <div>
-              <strong style={{ fontSize: '0.8125rem', color: 'var(--text-primary)', display: 'block' }}>
+              <strong style={{ fontSize: '0.78125rem', color: 'var(--text-primary)', display: 'block' }}>
                 Website Sedang Dalam Pemeliharaan
               </strong>
-              <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '2px', display: 'block', lineHeight: 1.4 }}>
+              <span style={{ fontSize: '0.71875rem', color: 'var(--text-secondary)', marginTop: '2px', display: 'block', lineHeight: 1.4 }}>
                 Hanya akun <strong>Administrator</strong> yang diizinkan masuk saat ini.
               </span>
             </div>
@@ -232,24 +233,24 @@ export function LoginPage() {
             backgroundColor: 'var(--bg-surface)',
             border: '1px solid var(--border-default)',
             borderRadius: 'var(--radius-lg)',
-            padding: '20px 20px',
+            padding: '16px 18px',
             boxShadow: 'var(--shadow-md)',
           }}
         >
           {/* Header & Logo */}
-          <div style={{ textAlign: 'center', marginBottom: '12px' }}>
+          <div style={{ textAlign: 'center', marginBottom: '10px' }}>
             <img
               src="/logo.png"
               alt="Logo LPK BMU"
               style={{
-                width: '38px',
-                height: '38px',
+                width: '34px',
+                height: '34px',
                 objectFit: 'contain',
-                marginBottom: '6px',
+                marginBottom: '4px',
                 display: 'inline-block',
               }}
             />
-            <h1 style={{ fontSize: '1rem', fontWeight: '700', letterSpacing: '-0.02em', margin: 0 }}>
+            <h1 style={{ fontSize: '0.95rem', fontWeight: '700', letterSpacing: '-0.02em', margin: 0 }}>
               Student Hub BMU
             </h1>
             <p style={{ fontSize: '0.6875rem', color: 'var(--text-tertiary)', marginTop: '2px', marginBottom: 0 }}>
@@ -264,7 +265,7 @@ export function LoginPage() {
             disabled={isLoading || !isSupabaseConfigured}
             style={{
               width: '100%',
-              height: '40px',
+              height: '36px',
               backgroundColor: 'var(--bg-surface-elevated)',
               color: 'var(--text-primary)',
               border: '1px solid var(--border-default)',
@@ -272,16 +273,16 @@ export function LoginPage() {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              gap: '10px',
+              gap: '8px',
               fontWeight: 600,
-              fontSize: '0.8125rem',
+              fontSize: '0.8rem',
               cursor: isSupabaseConfigured ? 'pointer' : 'not-allowed',
               opacity: isSupabaseConfigured ? 1 : 0.6,
               transition: 'all var(--transition-fast)',
               boxShadow: 'var(--shadow-sm)',
             }}
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
               <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
               <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
               <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" fill="#FBBC05"/>
@@ -295,19 +296,19 @@ export function LoginPage() {
             style={{
               display: 'flex',
               alignItems: 'center',
-              margin: '12px 0 10px',
+              margin: '8px 0 6px',
               gap: '8px',
             }}
           >
             <div style={{ flex: 1, height: '1px', backgroundColor: 'var(--border-subtle)' }} />
-            <span style={{ fontSize: '0.6875rem', color: 'var(--text-tertiary)', fontWeight: 500 }}>
+            <span style={{ fontSize: '0.65rem', color: 'var(--text-tertiary)', fontWeight: 500 }}>
               atau masuk dengan email
             </span>
             <div style={{ flex: 1, height: '1px', backgroundColor: 'var(--border-subtle)' }} />
           </div>
 
           {/* Email / Password Form */}
-          <form onSubmit={handleEmailAuth} noValidate style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <form onSubmit={handleEmailAuth} noValidate style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
             {isRegisterMode && (
               <Input
                 label="Nama Lengkap Staf"
@@ -352,12 +353,12 @@ export function LoginPage() {
             )}
 
             {!isRegisterMode && (
-              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '-4px' }}>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '-2px' }}>
                 <button
                   type="button"
                   onClick={() => setShowForgotModal(true)}
                   style={{
-                    fontSize: '0.75rem',
+                    fontSize: '0.71875rem',
                     color: 'var(--text-tertiary)',
                     background: 'none',
                     border: 'none',
@@ -376,23 +377,23 @@ export function LoginPage() {
               isLoading={isLoading}
               disabled={!isSupabaseConfigured}
               className="w-full"
-              style={{ width: '100%', height: '38px', marginTop: '2px' }}
+              style={{ width: '100%', height: '36px', marginTop: '2px', fontSize: '0.8125rem' }}
               icon={isRegisterMode ? UserPlus : LogIn}
             >
               {isRegisterMode ? 'Daftar Akun Baru' : 'Masuk ke Student Hub'}
             </Button>
 
-            <div style={{ textAlign: 'center', marginTop: '6px' }}>
+            <div style={{ textAlign: 'center', marginTop: '4px' }}>
               <button
                 type="button"
                 onClick={() => setIsRegisterMode(!isRegisterMode)}
                 style={{
-                  fontSize: '0.78125rem',
+                  fontSize: '0.75rem',
                   color: 'var(--text-secondary)',
                   background: 'none',
                   border: 'none',
                   cursor: 'pointer',
-                  padding: '4px',
+                  padding: '2px',
                 }}
               >
                 {isRegisterMode
@@ -404,8 +405,8 @@ export function LoginPage() {
 
           <div
             style={{
-              marginTop: '14px',
-              paddingTop: '12px',
+              marginTop: '10px',
+              paddingTop: '8px',
               borderTop: '1px solid var(--border-subtle)',
               textAlign: 'center',
             }}
@@ -414,7 +415,7 @@ export function LoginPage() {
               type="button"
               onClick={() => setShowCookieModal(true)}
               style={{
-                fontSize: '0.75rem',
+                fontSize: '0.71875rem',
                 color: 'var(--text-tertiary)',
                 display: 'inline-flex',
                 alignItems: 'center',
@@ -430,10 +431,10 @@ export function LoginPage() {
         {/* Security watermark */}
         <p
           style={{
-            fontSize: '0.6875rem',
+            fontSize: '0.65rem',
             color: 'var(--text-tertiary)',
             textAlign: 'center',
-            marginTop: '12px',
+            marginTop: '8px',
           }}
         >
           Sistem Akses Internal Khusus Tim BMU. Akses tanpa izin dilarang.

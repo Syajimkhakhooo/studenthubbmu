@@ -157,20 +157,34 @@ export function DashboardPage() {
           else if (s.program_type === 'TG_INTERNSHIP') progIntern++;
           else progOther++;
 
-          // Student Journey
+          // Student Journey (Normalized per business rules)
           const j = s.student_journey;
           if (j) {
+            const isDeparted = j.departure_status === 'sudah_berangkat';
+            const isGraduated = j.learning_status === 'lulus';
+
             if (j.learning_status === 'sedang_belajar') learning++;
-            if (j.interview_readiness === 'siap') interview++;
+
+            // Rule 1: Lulus pelatihan otomatis siap wawancara (selama belum berangkat)
+            if (!isDeparted && (j.interview_readiness === 'siap' || isGraduated)) {
+              interview++;
+            }
+
             if (j.job_selection_status === 'lolos') jobPassed++;
 
-            // Departure Readiness Breakdown
-            if (j.departure_readiness === 'menunggu_kontrak') waitingContract++;
-            if (j.departure_readiness === 'menunggu_coe') waitingCoe++;
-            if (j.departure_readiness === 'siap') departureReady++;
+            // Departure Readiness Breakdown (hanya jika belum berangkat)
+            if (!isDeparted) {
+              if (j.departure_readiness === 'menunggu_kontrak') waitingContract++;
+              if (j.departure_readiness === 'menunggu_coe') waitingCoe++;
+              if (j.departure_readiness === 'siap') departureReady++;
+            }
 
-            if (j.leave_status === 'cuti' || j.leave_status === 'dicutikan') onLeave++;
-            if (j.departure_status === 'sudah_berangkat') departed++;
+            // Rule 2 & 3: Cuti HANYA berlaku jika belum lulus pelatihan dan belum berangkat
+            if (!isDeparted && !isGraduated) {
+              if (j.leave_status === 'cuti' || j.leave_status === 'dicutikan') onLeave++;
+            }
+
+            if (isDeparted) departed++;
           }
 
           (s.certifications || []).forEach((c) => {

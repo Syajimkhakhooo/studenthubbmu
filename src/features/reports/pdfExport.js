@@ -19,7 +19,7 @@ export function generateStudentReportPdf({
   students = [],
   filterSummary = '',
   orientation = 'portrait', // 'portrait' | 'landscape'
-  selectedColumns = ['student_id', 'name', 'gender', 'age', 'height', 'kelas', 'program', 'job_interest', 'learning_status', 'selection_status', 'certs'],
+  selectedColumns = ['student_id', 'name', 'gender', 'age', 'height', 'kelas', 'program', 'job_interest', 'learning_status', 'selection_status', 'matched_company', 'certs'],
   reportTitle = 'LAPORAN REKAPITULASI DATA SISWA',
 }) {
   const doc = new jsPDF({
@@ -109,7 +109,8 @@ export function generateStudentReportPdf({
     job_interest: { header: 'BIDANG MINAT', dataKey: 'target_job_interest' },
     entry_date: { header: 'TGL MASUK', dataKey: 'entry_date' },
     learning_status: { header: 'STATUS BELAJAR', dataKey: 'learning_status' },
-    selection_status: { header: 'STATUS SELEKSI', dataKey: 'job_selection_status' },
+    selection_status: { header: 'STATUS SELEKSI & PERUSAHAAN', dataKey: 'job_selection_status' },
+    matched_company: { header: 'PERUSAHAAN JEPANG', dataKey: 'matched_company_name' },
     departure_readiness: { header: 'KESIAPAN BERANGKAT', dataKey: 'departure_readiness' },
     departure_status: { header: 'KEBERANGKATAN', dataKey: 'departure_status' },
     certs: { header: 'SERTIFIKASI & BAHASA', dataKey: 'certs' },
@@ -163,8 +164,18 @@ export function generateStudentReportPdf({
         case 'learning_status':
           row.push(getLearningStatusMeta(s.student_journey?.learning_status).label);
           break;
-        case 'selection_status':
-          row.push(getJobSelectionMeta(s.student_journey?.job_selection_status).label);
+        case 'selection_status': {
+          const meta = getJobSelectionMeta(s.student_journey?.job_selection_status);
+          const company = s.student_journey?.matched_company_name;
+          if (company && s.student_journey?.job_selection_status === 'lolos') {
+            row.push(`${meta.label}\n(${company})`);
+          } else {
+            row.push(meta.label);
+          }
+          break;
+        }
+        case 'matched_company':
+          row.push(s.student_journey?.matched_company_name || '-');
           break;
         case 'departure_readiness':
           row.push(getDepartureReadinessMeta(s.student_journey?.departure_readiness).label);

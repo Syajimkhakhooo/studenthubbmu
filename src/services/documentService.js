@@ -8,6 +8,9 @@ export const documentService = {
    */
   async uploadStudentDocument({ studentId, docType, file, actorProfile }) {
     if (!isSupabaseConfigured) throw new Error('Supabase belum terhubung.');
+    if (actorProfile?.role === 'viewer') {
+      throw new Error('Akun Viewer (Hanya Lihat) tidak diizinkan mengunggah dokumen.');
+    }
 
     try {
       const fileExt = file.name.split('.').pop();
@@ -86,6 +89,9 @@ export const documentService = {
    */
   async updateVerificationStatus({ docId, status, reviewerNotes, actorProfile }) {
     if (!isSupabaseConfigured) throw new Error('Supabase belum terhubung.');
+    if (actorProfile?.role === 'viewer') {
+      throw new Error('Akun Viewer (Hanya Lihat) tidak diizinkan memverifikasi dokumen.');
+    }
 
     try {
       const payload = {

@@ -5,10 +5,13 @@ import { Input } from '../../../components/ui/Input';
 import { Select } from '../../../components/ui/Select';
 import { Modal } from '../../../components/ui/Modal';
 import { studentService } from '../../../services/studentService';
+import { useAuth } from '../../../hooks/useAuth';
 import { useToast } from '../../../hooks/useToast';
 import { Users, Plus, Trash2, Edit2 } from 'lucide-react';
 
-export function TabFamily({ student, onUpdate }) {
+export function TabFamily({ student, onUpdate, isViewer: isViewerProp }) {
+  const { profile, isViewer: authViewer } = useAuth();
+  const isReadOnly = isViewerProp ?? (authViewer || profile?.role === 'viewer');
   const { success, error: toastError } = useToast();
   const [familyList, setFamilyList] = useState(student?.family_members || []);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -97,9 +100,11 @@ export function TabFamily({ student, onUpdate }) {
         title="Susunan Anggota Keluarga"
         subtitle="Data orang tua, saudara kandung, atau tanggungan keluarga siswa"
       >
-        <Button variant="secondary" size="sm" icon={Plus} onClick={openAdd}>
-          Tambah Anggota
-        </Button>
+        {!isReadOnly && (
+          <Button variant="secondary" size="sm" icon={Plus} onClick={openAdd}>
+            Tambah Anggota
+          </Button>
+        )}
       </CardHeader>
       <CardBody>
         {familyList.length === 0 ? (
@@ -149,10 +154,12 @@ export function TabFamily({ student, onUpdate }) {
                   </div>
                 </div>
 
-                <div style={{ display: 'flex', gap: '6px' }}>
-                  <Button variant="ghost" size="sm" icon={Edit2} onClick={() => openEdit(item, idx)} />
-                  <Button variant="ghost" size="sm" icon={Trash2} onClick={() => handleDelete(idx)} />
-                </div>
+                {!isReadOnly && (
+                  <div style={{ display: 'flex', gap: '6px' }}>
+                    <Button variant="ghost" size="sm" icon={Edit2} onClick={() => openEdit(item, idx)} />
+                    <Button variant="ghost" size="sm" icon={Trash2} onClick={() => handleDelete(idx)} />
+                  </div>
+                )}
               </div>
             ))}
           </div>

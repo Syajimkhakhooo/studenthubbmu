@@ -8,8 +8,9 @@ import { useAuth } from '../../../hooks/useAuth';
 import { useToast } from '../../../hooks/useToast';
 import { Activity, ShieldCheck, CheckCircle2, XCircle } from 'lucide-react';
 
-export function TabPersonalProfile({ student, onUpdate }) {
-  const { profile } = useAuth();
+export function TabPersonalProfile({ student, onUpdate, isViewer: isViewerProp }) {
+  const { profile, isViewer: authViewer } = useAuth();
+  const isReadOnly = isViewerProp ?? (authViewer || profile?.role === 'viewer');
   const { success, error: toastError } = useToast();
   const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -47,13 +48,15 @@ export function TabPersonalProfile({ student, onUpdate }) {
         title="Profil Fisik & Karakteristik Siswa"
         subtitle="Data fisik, kebiasaan, SIM, dan kesiapan penempatan kerja Jepang"
       >
-        <Button
-          variant="secondary"
-          size="sm"
-          onClick={() => setIsEditing(!isEditing)}
-        >
-          {isEditing ? 'Batal' : 'Edit Profil'}
-        </Button>
+        {!isReadOnly && (
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => setIsEditing(!isEditing)}
+          >
+            {isEditing ? 'Batal' : 'Edit Profil'}
+          </Button>
+        )}
       </CardHeader>
       <CardBody>
         {isEditing ? (

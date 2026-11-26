@@ -1,6 +1,58 @@
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 
+let hasSyncedLegacyJourney = false;
+
 export const studentService = {
+  /**
+   * Helper to normalize student journey dimensions per business rules:
+   * Rule 1: Lulus pelatihan -> otomatis siap wawancara (interview_readiness = 'siap')
+   * Rule 2: Lulus pelatihan -> izin cuti tidak berlaku (leave_status = 'normal')
+   * Rule 3: Sudah di Jepang -> kesiapan & izin cuti tidak berlaku (leave_status = 'normal')
+   */
+  normalizeStudentJourney(student) {
+    if (!student || !student.student_journey) return student;
+    const j = { ...student.student_journey };
+    if (j.departure_status === 'sudah_berangkat') {
+      j.leave_status = 'normal';
+    } else if (j.learning_status === 'lulus') {
+      j.leave_status = 'normal';
+      j.interview_readiness = 'siap';
+    }
+    return { ...student, student_journey: j };
+  },
+
+  /**
+   * Synchronize legacy records in Supabase to maintain database integrity
+   */
+  async syncLegacyJourneyStatus() {
+    if (!isSupabaseConfigured) return;
+    try {
+      // 1. Siswa yang sudah berangkat ke Jepang -> izin cuti dinormalkan
+      await supabase
+        .from('student_journey')
+        .update({ leave_status: 'normal', updated_at: new Date().toISOString() })
+        .eq('departure_status', 'sudah_berangkat')
+        .in('leave_status', ['cuti', 'dicutikan']);
+
+      // 2. Siswa yang sudah lulus pelatihan -> izin cuti dinormalkan
+      await supabase
+        .from('student_journey')
+        .update({ leave_status: 'normal', updated_at: new Date().toISOString() })
+        .eq('learning_status', 'lulus')
+        .in('leave_status', ['cuti', 'dicutikan']);
+
+      // 3. Siswa yang sudah lulus pelatihan tapi belum berangkat -> otomatis siap interview
+      await supabase
+        .from('student_journey')
+        .update({ interview_readiness: 'siap', updated_at: new Date().toISOString() })
+        .eq('learning_status', 'lulus')
+        .neq('departure_status', 'sudah_berangkat')
+        .neq('interview_readiness', 'siap');
+    } catch (err) {
+      console.warn('Sync legacy journey status notice:', err);
+    }
+  },
+
   /**
    * Fetch paginated list of students with optional search & filter
    */
@@ -77,6 +129,12 @@ export const studentService = {
         entryPeriod
       );
 
+      // Trigger one-time asynchronous database synchronization for legacy records
+      if (!hasSyncedLegacyJourney) {
+        hasSyncedLegacyJourney = true;
+        this.syncLegacyJourneyStatus().catch(() => {});
+      }
+
       // If no nested relational filters, use standard database pagination directly
       if (!hasJourneyFilter) {
         const from = (page - 1) * pageSize;
@@ -86,8 +144,10 @@ export const studentService = {
         const { data, count, error } = await query;
         if (error) throw error;
 
+        const normalizedData = (data || []).map((s) => this.normalizeStudentJourney(s));
+
         return {
-          data: data || [],
+          data: normalizedData,
           total: count || 0,
           page,
           pageSize,
@@ -98,9 +158,11 @@ export const studentService = {
       const { data, error } = await query;
       if (error) throw error;
 
-      let filteredData = data || [];
+      // Always normalize journey rules first before evaluating filters
+      let filteredData = (data || []).map((s) => this.normalizeStudentJourney(s));
 
       // Filter: Leave status (Izin Cuti / Dicutikan Lembaga)
+      // Note: Siswa yang sudah_berangkat atau lulus otomatis dinormalkan ke 'normal'
       if (leaveStatus) {
         if (leaveStatus === 'cuti' || leaveStatus === 'leave_cuti') {
           filteredData = filteredData.filter(
@@ -121,14 +183,22 @@ export const studentService = {
         filteredData = filteredData.filter((s) => s.student_journey?.job_selection_status === jobStatus);
       }
 
-      // Filter: Interview readiness
+      // Filter: Interview readiness (selama belum berangkat ke Jepang)
       if (interviewReadiness) {
-        filteredData = filteredData.filter((s) => s.student_journey?.interview_readiness === interviewReadiness);
+        filteredData = filteredData.filter(
+          (s) =>
+            s.student_journey?.departure_status !== 'sudah_berangkat' &&
+            s.student_journey?.interview_readiness === interviewReadiness
+        );
       }
 
-      // Filter: Departure readiness
+      // Filter: Departure readiness (hanya bagi yang belum berangkat)
       if (departureReadiness) {
-        filteredData = filteredData.filter((s) => s.student_journey?.departure_readiness === departureReadiness);
+        filteredData = filteredData.filter(
+          (s) =>
+            s.student_journey?.departure_status !== 'sudah_berangkat' &&
+            s.student_journey?.departure_readiness === departureReadiness
+        );
       }
 
       // Filter: Departure status
@@ -189,7 +259,7 @@ export const studentService = {
         .single();
 
       if (error) throw error;
-      return data;
+      return this.normalizeStudentJourney(data);
     } catch (err) {
       console.error('Error fetching student detail:', err);
       throw err;
@@ -351,6 +421,9 @@ export const studentService = {
    */
   async createStudent(studentData, actorProfile) {
     if (!isSupabaseConfigured) throw new Error('Supabase belum terhubung.');
+    if (actorProfile?.role === 'viewer') {
+      throw new Error('Akun Viewer (Hanya Lihat) tidak memiliki izin untuk menambah data siswa.');
+    }
 
     // Check duplicate student_id_number
     const isDuplicate = await this.checkStudentIdExists(studentData.student_id_number);
@@ -398,6 +471,9 @@ export const studentService = {
    */
   async bulkCreateStudents(studentsList, actorProfile) {
     if (!isSupabaseConfigured) throw new Error('Supabase belum terhubung.');
+    if (actorProfile?.role === 'viewer') {
+      throw new Error('Akun Viewer (Hanya Lihat) tidak memiliki izin untuk mengimpor data.');
+    }
     if (!Array.isArray(studentsList) || studentsList.length === 0) {
       throw new Error('Tidak ada data siswa untuk diimpor.');
     }
@@ -452,6 +528,9 @@ export const studentService = {
    */
   async updateStudent(id, updateData, actorProfile) {
     if (!isSupabaseConfigured) throw new Error('Supabase belum terhubung.');
+    if (actorProfile?.role === 'viewer') {
+      throw new Error('Akun Viewer (Hanya Lihat) tidak memiliki izin untuk mengubah data.');
+    }
 
     try {
       const sanitized = this.sanitizeStudentPayload(updateData);
@@ -490,6 +569,9 @@ export const studentService = {
    */
   async setStudentArchive(id, isArchived, actorProfile) {
     if (!isSupabaseConfigured) throw new Error('Supabase belum terhubung.');
+    if (actorProfile?.role === 'viewer') {
+      throw new Error('Akun Viewer (Hanya Lihat) tidak memiliki izin untuk mengarsipkan data.');
+    }
 
     try {
       const { data, error } = await supabase
@@ -545,6 +627,9 @@ export const studentService = {
    */
   async deleteStudentPermanently(id, actorProfile) {
     if (!isSupabaseConfigured) throw new Error('Supabase belum terhubung.');
+    if (actorProfile?.role === 'viewer') {
+      throw new Error('Akun Viewer (Hanya Lihat) tidak memiliki izin untuk menghapus data.');
+    }
 
     try {
       // 1. Fetch student info first for audit trail
@@ -696,6 +781,9 @@ export const studentService = {
    */
   async emptyTrash(actorProfile) {
     if (!isSupabaseConfigured) throw new Error('Supabase belum terhubung.');
+    if (actorProfile?.role === 'viewer') {
+      throw new Error('Akun Viewer (Hanya Lihat) tidak memiliki izin untuk mengosongkan tong sampah.');
+    }
 
     try {
       // Count first for audit summary
@@ -735,6 +823,9 @@ export const studentService = {
    */
   async deleteAllActiveStudents(actorProfile) {
     if (!isSupabaseConfigured) throw new Error('Supabase belum terhubung.');
+    if (actorProfile?.role === 'viewer') {
+      throw new Error('Akun Viewer (Hanya Lihat) tidak memiliki izin untuk menghapus semua data.');
+    }
 
     try {
       // Count first for audit summary

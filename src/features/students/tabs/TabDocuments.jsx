@@ -12,8 +12,9 @@ import { useAuth } from '../../../hooks/useAuth';
 import { useToast } from '../../../hooks/useToast';
 import { FileText, Upload, CheckCircle, ExternalLink, ShieldCheck, AlertCircle } from 'lucide-react';
 
-export function TabDocuments({ student, onUpdate }) {
-  const { profile } = useAuth();
+export function TabDocuments({ student, onUpdate, isViewer: isViewerProp }) {
+  const { profile, isViewer: authViewer } = useAuth();
+  const isReadOnly = isViewerProp ?? (authViewer || profile?.role === 'viewer');
   const { success, error: toastError } = useToast();
 
   const [docsList, setDocsList] = useState(student?.student_documents || []);
@@ -195,7 +196,7 @@ export function TabDocuments({ student, onUpdate }) {
                     </Button>
                   )}
 
-                  {doc && (
+                  {!isReadOnly && doc && (
                     <Button
                       variant="ghost"
                       size="sm"
@@ -210,17 +211,19 @@ export function TabDocuments({ student, onUpdate }) {
                     </Button>
                   )}
 
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    icon={Upload}
-                    onClick={() => {
-                      setUploadModalDoc(item.docType);
-                      setSelectedFile(null);
-                    }}
-                  >
-                    {doc?.file_storage_path ? 'Ganti File' : 'Unggah'}
-                  </Button>
+                  {!isReadOnly && (
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      icon={Upload}
+                      onClick={() => {
+                        setUploadModalDoc(item.docType);
+                        setSelectedFile(null);
+                      }}
+                    >
+                      {doc?.file_storage_path ? 'Ganti File' : 'Unggah'}
+                    </Button>
+                  )}
                 </div>
               </div>
             );

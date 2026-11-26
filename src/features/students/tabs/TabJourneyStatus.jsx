@@ -39,12 +39,16 @@ const DIMENSION_LABELS = {
 };
 
 
-export function TabJourneyStatus({ student, onUpdate }) {
-  const { profile } = useAuth();
+export function TabJourneyStatus({ student, onUpdate, isViewer: isViewerProp }) {
+  const { profile, isViewer: authViewer } = useAuth();
+  const isReadOnly = isViewerProp ?? (authViewer || profile?.role === 'viewer');
   const { success, error: toastError } = useToast();
 
   const journey = student?.student_journey || {};
   const statusHistory = student?.student_status_history || [];
+
+  const isSudahBerangkat = journey.departure_status === 'sudah_berangkat';
+  const isLulusPelatihan = journey.learning_status === 'lulus';
 
   const [activeModalDim, setActiveModalDim] = useState(null); // 'learning_status' | 'interview_readiness' | etc.
   const [newValue, setNewValue] = useState('');
@@ -142,14 +146,16 @@ export function TabJourneyStatus({ student, onUpdate }) {
                   </Badge>
                 </div>
               </div>
-              <Button
-                variant="outline"
-                size="sm"
-                icon={Edit3}
-                onClick={() => openUpdateModal('learning_status', journey.learning_status)}
-              >
-                Ubah
-              </Button>
+              {!isReadOnly && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  icon={Edit3}
+                  onClick={() => openUpdateModal('learning_status', journey.learning_status)}
+                >
+                  Ubah
+                </Button>
+              )}
             </div>
 
             {/* 2. Leave Status */}
@@ -167,19 +173,27 @@ export function TabJourneyStatus({ student, onUpdate }) {
               <div>
                 <span className="text-xs text-subtle">2. Status Izin / Cuti</span>
                 <div style={{ marginTop: '4px' }}>
-                  <Badge variant={getLeaveStatusMeta(journey.leave_status).badge}>
-                    {getLeaveStatusMeta(journey.leave_status).label}
-                  </Badge>
+                  {isSudahBerangkat || isLulusPelatihan ? (
+                    <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-tertiary)' }}>
+                      - <span style={{ fontSize: '0.75rem', fontWeight: 400 }}>({isSudahBerangkat ? 'Sudah di Jepang' : 'Lulus Pelatihan'})</span>
+                    </span>
+                  ) : (
+                    <Badge variant={getLeaveStatusMeta(journey.leave_status).badge}>
+                      {getLeaveStatusMeta(journey.leave_status).label}
+                    </Badge>
+                  )}
                 </div>
               </div>
-              <Button
-                variant="outline"
-                size="sm"
-                icon={Edit3}
-                onClick={() => openUpdateModal('leave_status', journey.leave_status)}
-              >
-                Ubah
-              </Button>
+              {!isReadOnly && !isSudahBerangkat && !isLulusPelatihan && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  icon={Edit3}
+                  onClick={() => openUpdateModal('leave_status', journey.leave_status)}
+                >
+                  Ubah
+                </Button>
+              )}
             </div>
 
             {/* 3. Interview Readiness */}
@@ -197,19 +211,31 @@ export function TabJourneyStatus({ student, onUpdate }) {
               <div>
                 <span className="text-xs text-subtle">3. Kesiapan Wawancara (Interview)</span>
                 <div style={{ marginTop: '4px' }}>
-                  <Badge variant={getInterviewReadinessMeta(journey.interview_readiness).badge}>
-                    {getInterviewReadinessMeta(journey.interview_readiness).label}
-                  </Badge>
+                  {isSudahBerangkat ? (
+                    <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-tertiary)' }}>
+                      - <span style={{ fontSize: '0.75rem', fontWeight: 400 }}>(Sudah di Jepang)</span>
+                    </span>
+                  ) : isLulusPelatihan ? (
+                    <Badge variant="success">
+                      Siap Mengikuti Interview
+                    </Badge>
+                  ) : (
+                    <Badge variant={getInterviewReadinessMeta(journey.interview_readiness).badge}>
+                      {getInterviewReadinessMeta(journey.interview_readiness).label}
+                    </Badge>
+                  )}
                 </div>
               </div>
-              <Button
-                variant="outline"
-                size="sm"
-                icon={Edit3}
-                onClick={() => openUpdateModal('interview_readiness', journey.interview_readiness)}
-              >
-                Ubah
-              </Button>
+              {!isReadOnly && !isSudahBerangkat && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  icon={Edit3}
+                  onClick={() => openUpdateModal('interview_readiness', isLulusPelatihan ? 'siap' : journey.interview_readiness)}
+                >
+                  Ubah
+                </Button>
+              )}
             </div>
 
             {/* 4. Job Selection Status */}
@@ -237,14 +263,16 @@ export function TabJourneyStatus({ student, onUpdate }) {
                   </div>
                 )}
               </div>
-              <Button
-                variant="outline"
-                size="sm"
-                icon={Edit3}
-                onClick={() => openUpdateModal('job_selection_status', journey.job_selection_status)}
-              >
-                Ubah
-              </Button>
+              {!isReadOnly && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  icon={Edit3}
+                  onClick={() => openUpdateModal('job_selection_status', journey.job_selection_status)}
+                >
+                  Ubah
+                </Button>
+              )}
             </div>
 
             {/* 5. Departure Readiness */}
@@ -262,19 +290,27 @@ export function TabJourneyStatus({ student, onUpdate }) {
               <div>
                 <span className="text-xs text-subtle">5. Kesiapan Berangkat (COE / Visa)</span>
                 <div style={{ marginTop: '4px' }}>
-                  <Badge variant={getDepartureReadinessMeta(journey.departure_readiness).badge}>
-                    {getDepartureReadinessMeta(journey.departure_readiness).label}
-                  </Badge>
+                  {isSudahBerangkat ? (
+                    <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-tertiary)' }}>
+                      - <span style={{ fontSize: '0.75rem', fontWeight: 400 }}>(Sudah di Jepang)</span>
+                    </span>
+                  ) : (
+                    <Badge variant={getDepartureReadinessMeta(journey.departure_readiness).badge}>
+                      {getDepartureReadinessMeta(journey.departure_readiness).label}
+                    </Badge>
+                  )}
                 </div>
               </div>
-              <Button
-                variant="outline"
-                size="sm"
-                icon={Edit3}
-                onClick={() => openUpdateModal('departure_readiness', journey.departure_readiness)}
-              >
-                Ubah
-              </Button>
+              {!isReadOnly && !isSudahBerangkat && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  icon={Edit3}
+                  onClick={() => openUpdateModal('departure_readiness', journey.departure_readiness)}
+                >
+                  Ubah
+                </Button>
+              )}
             </div>
 
             {/* 6. Departure Status */}
@@ -302,14 +338,16 @@ export function TabJourneyStatus({ student, onUpdate }) {
                   </div>
                 )}
               </div>
-              <Button
-                variant="outline"
-                size="sm"
-                icon={Edit3}
-                onClick={() => openUpdateModal('departure_status', journey.departure_status)}
-              >
-                Ubah
-              </Button>
+              {!isReadOnly && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  icon={Edit3}
+                  onClick={() => openUpdateModal('departure_status', journey.departure_status)}
+                >
+                  Ubah
+                </Button>
+              )}
             </div>
           </div>
         </CardBody>

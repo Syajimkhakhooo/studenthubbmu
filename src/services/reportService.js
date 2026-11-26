@@ -110,7 +110,20 @@ export const reportService = {
       const { data, error } = await query;
       if (error) throw error;
 
-      let results = data || [];
+      // Normalize student journey records according to BMU business rules:
+      // Rule 1: Lulus pelatihan otomatis siap wawancara & izin cuti berakhir (normal)
+      // Rule 2 & 3: Sudah di Jepang izin cuti & kesiapan tidak berlaku (normal)
+      let results = (data || []).map((s) => {
+        if (!s.student_journey) return s;
+        const j = { ...s.student_journey };
+        if (j.departure_status === 'sudah_berangkat') {
+          j.leave_status = 'normal';
+        } else if (j.learning_status === 'lulus') {
+          j.leave_status = 'normal';
+          j.interview_readiness = 'siap';
+        }
+        return { ...s, student_journey: j };
+      });
 
       // Age range filter (calculated from birth_date in memory or query)
       if (filters.minAge || filters.maxAge) {
@@ -133,16 +146,33 @@ export const reportService = {
         results = results.filter((s) => s.student_journey?.learning_status === filters.learningStatus);
       }
       if (filters.leaveStatus) {
-        results = results.filter((s) => s.student_journey?.leave_status === filters.leaveStatus);
+        results = results.filter((s) => {
+          const j = s.student_journey;
+          if (!j) return false;
+          // Siswa yang sudah berangkat ke Jepang atau lulus pelatihan tidak masuk kategori izin cuti
+          if (j.departure_status === 'sudah_berangkat' || j.learning_status === 'lulus') return false;
+          if (filters.leaveStatus === 'cuti') {
+            return j.leave_status === 'cuti' || j.leave_status === 'dicutikan';
+          }
+          return j.leave_status === filters.leaveStatus;
+        });
       }
       if (filters.interviewReadiness) {
-        results = results.filter((s) => s.student_journey?.interview_readiness === filters.interviewReadiness);
+        results = results.filter(
+          (s) =>
+            s.student_journey?.departure_status !== 'sudah_berangkat' &&
+            s.student_journey?.interview_readiness === filters.interviewReadiness
+        );
       }
       if (filters.jobSelectionStatus) {
         results = results.filter((s) => s.student_journey?.job_selection_status === filters.jobSelectionStatus);
       }
       if (filters.departureReadiness) {
-        results = results.filter((s) => s.student_journey?.departure_readiness === filters.departureReadiness);
+        results = results.filter(
+          (s) =>
+            s.student_journey?.departure_status !== 'sudah_berangkat' &&
+            s.student_journey?.departure_readiness === filters.departureReadiness
+        );
       }
       if (filters.departureStatus) {
         results = results.filter((s) => s.student_journey?.departure_status === filters.departureStatus);

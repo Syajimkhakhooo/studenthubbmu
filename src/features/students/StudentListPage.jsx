@@ -510,25 +510,31 @@ export function StudentListPage() {
           style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '6px' }}
           onClick={(e) => e.stopPropagation()}
         >
-          <Button
-            variant="outline"
-            size="sm"
-            icon={RotateCcw}
-            onClick={() => setRestoreTarget(row)}
-            title="Pulihkan Siswa ke Daftar Aktif"
-          >
-            Pulihkan
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            icon={Trash2}
-            onClick={() => setDeletePermanentTarget(row)}
-            title="Hapus Permanen dari Database"
-            style={{ color: '#ef4444' }}
-          >
-            Hapus Permanen
-          </Button>
+          {isViewer ? (
+            <span style={{ color: 'var(--text-tertiary)', fontSize: '0.8125rem' }}>-</span>
+          ) : (
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                icon={RotateCcw}
+                onClick={() => setRestoreTarget(row)}
+                title="Pulihkan Siswa ke Daftar Aktif"
+              >
+                Pulihkan
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                icon={Trash2}
+                onClick={() => setDeletePermanentTarget(row)}
+                title="Hapus Permanen dari Database"
+                style={{ color: '#ef4444' }}
+              >
+                Hapus Permanen
+              </Button>
+            </>
+          )}
         </div>
       ),
     },
@@ -561,19 +567,21 @@ export function StudentListPage() {
           {activeTab === 'trash' ? (
             // ── Trash tab actions ──────────────────────────────────────────
             <>
-              <Button
-                variant="outline"
-                icon={Flame}
-                onClick={() => setShowEmptyTrashConfirm(true)}
-                disabled={trashCount === 0}
-                style={{
-                  color: '#ef4444',
-                  borderColor: 'rgba(239,68,68,0.4)',
-                }}
-                title="Hapus permanen semua siswa di tong sampah"
-              >
-                Kosongkan Tong Sampah {trashCount > 0 && `(${trashCount})`}
-              </Button>
+              {!isViewer && (
+                <Button
+                  variant="outline"
+                  icon={Flame}
+                  onClick={() => setShowEmptyTrashConfirm(true)}
+                  disabled={trashCount === 0}
+                  style={{
+                    color: '#ef4444',
+                    borderColor: 'rgba(239,68,68,0.4)',
+                  }}
+                  title="Hapus permanen semua siswa di tong sampah"
+                >
+                  Kosongkan Tong Sampah {trashCount > 0 && `(${trashCount})`}
+                </Button>
+              )}
             </>
           ) : (
             // ── Active tab actions ─────────────────────────────────────────

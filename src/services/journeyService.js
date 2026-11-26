@@ -14,6 +14,9 @@ export const journeyService = {
     extraFields = {}, // e.g. matched_company_name, target_departure_date
   }) {
     if (!isSupabaseConfigured) throw new Error('Supabase belum terhubung.');
+    if (actorProfile?.role === 'viewer') {
+      throw new Error('Akun Viewer hanya memiliki hak akses untuk melihat dan mengunduh data.');
+    }
 
     try {
       // 1. Update student_journey table
@@ -27,6 +30,20 @@ export const journeyService = {
         updated_at: new Date().toISOString(),
         ...sanitizedExtra,
       };
+
+      // Rule 1: jika siswa statusnya lulus pelatihan, otomatis kesiapan wawancara 'siap'
+      // Rule 2: jika lulus pelatihan, status izin cuti diakhiri ('normal')
+      if (dimension === 'learning_status' && newValue === 'lulus') {
+        updatePayload.interview_readiness = 'siap';
+        updatePayload.leave_status = 'normal';
+      }
+
+      // Rule 3: jika sudah berangkat ke Jepang, kesiapan wawancara & keberangkatan diset 'siap', cuti 'normal'
+      if (dimension === 'departure_status' && newValue === 'sudah_berangkat') {
+        updatePayload.departure_readiness = 'siap';
+        updatePayload.interview_readiness = 'siap';
+        updatePayload.leave_status = 'normal';
+      }
 
       const { data, error } = await supabase
         .from('student_journey')
@@ -132,12 +149,22 @@ export const journeyService = {
       };
 
       (data || []).forEach((row) => {
+        const isDeparted = row.departure_status === 'sudah_berangkat';
+        const isGraduated = row.learning_status === 'lulus';
+
         if (summary.learning[row.learning_status] !== undefined) summary.learning[row.learning_status]++;
-        if (summary.interview[row.interview_readiness] !== undefined) summary.interview[row.interview_readiness]++;
+
+        // Rule 1: Lulus pelatihan otomatis siap wawancara (selama belum berangkat)
+        const effectiveInterview = !isDeparted && isGraduated ? 'siap' : row.interview_readiness;
+        if (summary.interview[effectiveInterview] !== undefined) summary.interview[effectiveInterview]++;
+
         if (summary.jobSelection[row.job_selection_status] !== undefined) summary.jobSelection[row.job_selection_status]++;
         if (summary.departureReadiness[row.departure_readiness] !== undefined) summary.departureReadiness[row.departure_readiness]++;
         if (summary.departure[row.departure_status] !== undefined) summary.departure[row.departure_status]++;
-        if (summary.leave[row.leave_status] !== undefined) summary.leave[row.leave_status]++;
+
+        // Rule 2 & 3: Cuti hanya berlaku jika belum lulus pelatihan dan belum berangkat
+        const effectiveLeave = (isDeparted || isGraduated) ? 'normal' : row.leave_status;
+        if (summary.leave[effectiveLeave] !== undefined) summary.leave[effectiveLeave]++;
       });
 
       return summary;

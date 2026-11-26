@@ -102,6 +102,7 @@ export function ReportsExplorerPage() {
     'job_interest',
     'learning_status',
     'selection_status',
+    'matched_company',
   ]);
 
   const availableColumns = [
@@ -118,6 +119,7 @@ export function ReportsExplorerPage() {
     { id: 'certs', label: 'Sertifikasi & Kualifikasi Bahasa' },
     { id: 'learning_status', label: 'Status Pembelajaran' },
     { id: 'selection_status', label: 'Status Seleksi Kerja' },
+    { id: 'matched_company', label: 'Perusahaan Penerima (Jepang)' },
     { id: 'departure_readiness', label: 'Kesiapan Keberangkatan' },
     { id: 'departure_status', label: 'Status Keberangkatan' },
   ];
@@ -228,6 +230,8 @@ export function ReportsExplorerPage() {
           'Status Belajar': getLearningStatusMeta(s.student_journey?.learning_status).label,
           'Kesiapan Wawancara': s.student_journey?.interview_readiness === 'siap' ? 'Siap Wawancara' : 'Belum Siap',
           'Status Seleksi': getJobSelectionMeta(s.student_journey?.job_selection_status).label,
+          'Perusahaan Penerima': s.student_journey?.matched_company_name || '-',
+          'Sektor Pekerjaan': s.student_journey?.matched_job_sector || '-',
           'Kesiapan Keberangkatan': dr.label,
           'Status Keberangkatan': getDepartureStatusMeta(s.student_journey?.departure_status).label,
           'Tanggal Masuk': formatDate(s.entry_date),

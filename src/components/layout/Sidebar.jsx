@@ -8,8 +8,6 @@ import {
   Route,
   Filter,
   Settings,
-  ChevronLeft,
-  ChevronRight,
   ShieldAlert,
 } from 'lucide-react';
 
@@ -56,15 +54,26 @@ export function Sidebar({ isCollapsed, onToggleCollapse, isMobile, onCloseMobile
         zIndex: 100,
       }}
     >
-      {/* Brand Header */}
+      {/* Brand Header — Klik Logo untuk Ciutkan / Perluas Sidebar */}
       <div
+        onClick={!isMobile ? onToggleCollapse : undefined}
+        title={!isMobile ? (isCollapsed ? 'Klik logo untuk perluas menu' : 'Klik logo untuk ciutkan menu') : undefined}
         style={{
           height: 'var(--header-height)',
           display: 'flex',
           alignItems: 'center',
-          justifyContent: isCollapsed ? 'center' : 'space-between',
+          justifyContent: isCollapsed ? 'center' : 'flex-start',
           padding: isCollapsed ? '0' : '0 var(--space-4)',
           borderBottom: '1px solid var(--border-subtle)',
+          cursor: !isMobile ? 'pointer' : 'default',
+          userSelect: 'none',
+          transition: 'background-color var(--transition-fast)',
+        }}
+        onMouseEnter={(e) => {
+          if (!isMobile) e.currentTarget.style.backgroundColor = 'var(--bg-surface-elevated)';
+        }}
+        onMouseLeave={(e) => {
+          if (!isMobile) e.currentTarget.style.backgroundColor = 'transparent';
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -77,6 +86,7 @@ export function Sidebar({ isCollapsed, onToggleCollapse, isMobile, onCloseMobile
               borderRadius: '6px',
               objectFit: 'contain',
               flexShrink: 0,
+              transition: 'transform var(--transition-fast)',
             }}
           />
           {!isCollapsed && (
@@ -90,24 +100,6 @@ export function Sidebar({ isCollapsed, onToggleCollapse, isMobile, onCloseMobile
             </div>
           )}
         </div>
-
-        {!isMobile && (
-          <button
-            type="button"
-            onClick={onToggleCollapse}
-            aria-label={isCollapsed ? 'Perluas Menu' : 'Ciutkan Menu'}
-            style={{
-              color: 'var(--text-tertiary)',
-              padding: '6px',
-              borderRadius: 'var(--radius-sm)',
-              display: isCollapsed ? 'none' : 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <ChevronLeft size={16} />
-          </button>
-        )}
       </div>
 
       {/* Navigation Links */}
@@ -150,27 +142,6 @@ export function Sidebar({ isCollapsed, onToggleCollapse, isMobile, onCloseMobile
           );
         })}
       </nav>
-
-      {/* Collapse Toggle for collapsed state */}
-      {!isMobile && isCollapsed && (
-        <div style={{ padding: '8px', borderTop: '1px solid var(--border-subtle)', display: 'flex', justifyContent: 'center' }}>
-          <button
-            type="button"
-            onClick={onToggleCollapse}
-            title="Perluas Sidebar"
-            style={{
-              color: 'var(--text-tertiary)',
-              padding: '6px',
-              borderRadius: 'var(--radius-sm)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <ChevronRight size={16} />
-          </button>
-        </div>
-      )}
 
       {/* Footer Info */}
       {!isCollapsed && (
