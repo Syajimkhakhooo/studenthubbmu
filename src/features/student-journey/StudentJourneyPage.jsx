@@ -55,7 +55,7 @@ export function StudentJourneyPage() {
     try {
       const [ov, stRes] = await Promise.all([
         journeyService.getJourneyOverview(),
-        studentService.getStudents({ pageSize: 500 }),
+        studentService.getStudents({ pageSize: 500, includeDeparted: true }),
       ]);
       setOverview(ov);
       setStudents(stRes?.data || []);

@@ -3,6 +3,7 @@ import autoTable from 'jspdf-autotable';
 import {
   formatDate,
   calculateAge,
+  formatStudyDuration,
   getLearningStatusMeta,
   getJobSelectionMeta,
   getDepartureStatusMeta,
@@ -108,6 +109,7 @@ export function generateStudentReportPdf({
     ssw_field: { header: 'BIDANG SSW & BAHASA', dataKey: 'ssw_field' },
     job_interest: { header: 'BIDANG MINAT', dataKey: 'target_job_interest' },
     entry_date: { header: 'TGL MASUK', dataKey: 'entry_date' },
+    study_duration: { header: 'LAMA BELAJAR', dataKey: 'study_duration' },
     learning_status: { header: 'STATUS BELAJAR', dataKey: 'learning_status' },
     selection_status: { header: 'STATUS SELEKSI & PERUSAHAAN', dataKey: 'job_selection_status' },
     matched_company: { header: 'PERUSAHAAN JEPANG', dataKey: 'matched_company_name' },
@@ -160,6 +162,9 @@ export function generateStudentReportPdf({
           break;
         case 'entry_date':
           row.push(formatDate(s.entry_date));
+          break;
+        case 'study_duration':
+          row.push(formatStudyDuration(s.entry_date));
           break;
         case 'learning_status':
           row.push(getLearningStatusMeta(s.student_journey?.learning_status).label);

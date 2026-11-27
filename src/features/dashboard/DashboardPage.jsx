@@ -39,6 +39,7 @@ export function DashboardPage() {
 
   const [stats, setStats] = useState({
     totalStudents: 0,
+    activeStudents: 0,
     newStudentsThisPeriod: 0,
     activeLearning: 0,
     readyInterview: 0,
@@ -54,6 +55,7 @@ export function DashboardPage() {
       other: 0,
     },
     certsCount: { jft: 0, jlpt: 0, ssw: 0 },
+    certStudents: { jft: 0, ssw: 0, both: 0 },
     docsSummary: { verified: 0, uploaded: 0, missing: 0 },
   });
 
@@ -117,6 +119,10 @@ export function DashboardPage() {
 
         const allStudents = students || [];
         const total = allStudents.length;
+        // Siswa aktif = masih dalam proses (belum berangkat ke Jepang)
+        const activeTotal = allStudents.filter(
+          (s) => s.student_journey?.departure_status !== 'sudah_berangkat'
+        ).length;
 
         const targetYear = parseInt(selectedYear);
         const targetMonth = parseInt(selectedMonth) - 1;
@@ -138,6 +144,11 @@ export function DashboardPage() {
         let jftCount = 0;
         let jlptCount = 0;
         let sswCount = 0;
+
+        // Jumlah SISWA pemilik sertifikat (untuk kartu JFT / SSW / JFT+SSW)
+        let studentsWithJft = 0;
+        let studentsWithSsw = 0;
+        let studentsWithBoth = 0;
 
         let docsVerified = 0;
         let docsUploaded = 0;
@@ -187,11 +198,20 @@ export function DashboardPage() {
             if (isDeparted) departed++;
           }
 
+          let studentHasJft = false;
+          let studentHasSsw = false;
           (s.certifications || []).forEach((c) => {
-            if (c.cert_type === 'JFT_BASIC') jftCount++;
+            if (c.cert_type === 'JFT_BASIC') { jftCount++; studentHasJft = true; }
             else if (c.cert_type && c.cert_type.startsWith('JLPT')) jlptCount++;
-            else if (c.cert_type === 'SSW') sswCount++;
+            else if (c.cert_type === 'SSW') { sswCount++; studentHasSsw = true; }
           });
+          // Siswa yang sudah di Jepang tidak dihitung pada kartu Punya JFT / SSW / JFT+SSW
+          const isAlreadyInJapan = s.student_journey?.departure_status === 'sudah_berangkat';
+          if (!isAlreadyInJapan) {
+            if (studentHasJft) studentsWithJft++;
+            if (studentHasSsw) studentsWithSsw++;
+            if (studentHasJft && studentHasSsw) studentsWithBoth++;
+          }
 
           (s.student_documents || []).forEach((d) => {
             if (d.status === 'verified') docsVerified++;
@@ -202,6 +222,7 @@ export function DashboardPage() {
 
         setStats({
           totalStudents: total,
+          activeStudents: activeTotal,
           newStudentsThisPeriod: newInPeriod,
           activeLearning: learning,
           readyInterview: interview,
@@ -217,6 +238,7 @@ export function DashboardPage() {
             other: progOther,
           },
           certsCount: { jft: jftCount, jlpt: jlptCount, ssw: sswCount },
+          certStudents: { jft: studentsWithJft, ssw: studentsWithSsw, both: studentsWithBoth },
           docsSummary: { verified: docsVerified, uploaded: docsUploaded, missing: docsMissing },
         });
 
@@ -324,9 +346,16 @@ export function DashboardPage() {
 
   const statCards = [
     {
+      title: 'Siswa Aktif (Dalam Proses)',
+      value: stats.activeStudents,
+      subtitle: 'Masih aktif / menunggu proses (belum di Jepang)',
+      icon: Users,
+      actionFilter: '',
+    },
+    {
       title: 'Total Siswa Terdaftar',
       value: stats.totalStudents,
-      subtitle: 'Semua siswa aktif di database',
+      subtitle: 'Seluruh siswa non-arsip (termasuk di Jepang)',
       icon: Users,
       actionFilter: '',
     },
@@ -394,6 +423,30 @@ export function DashboardPage() {
       subtitle: 'Status proses ditunda sementara',
       icon: AlertCircle,
       actionFilter: 'leave_cuti',
+    },
+    {
+      title: 'Sudah Punya JFT',
+      value: stats.certStudents.jft,
+      subtitle: 'Pemilik JFT-Basic (belum di Jepang)',
+      icon: Award,
+      actionFilter: 'cert_jft',
+      highlightColor: '#22c55e',
+    },
+    {
+      title: 'Sudah Punya SSW',
+      value: stats.certStudents.ssw,
+      subtitle: 'Pemilik SSW (belum di Jepang)',
+      icon: Award,
+      actionFilter: 'cert_ssw',
+      highlightColor: '#3b82f6',
+    },
+    {
+      title: 'Punya JFT + SSW',
+      value: stats.certStudents.both,
+      subtitle: 'Paket lengkap (belum di Jepang)',
+      icon: Award,
+      actionFilter: 'cert_both',
+      highlightColor: '#8b5cf6',
     },
   ];
 
@@ -512,7 +565,9 @@ export function DashboardPage() {
                 <div
                   key={idx}
                   onClick={() => {
-                    if (card.actionFilter.startsWith('departure_')) {
+                    if (card.actionFilter.startsWith('cert_')) {
+                      navigate(`/students?tab=${card.actionFilter.replace('cert_', '')}`);
+                    } else if (card.actionFilter.startsWith('departure_')) {
                       const stageKey = card.actionFilter.replace('departure_', '');
                       let stage = stageKey;
                       if (stageKey === 'ready') stage = 'siap_berangkat';

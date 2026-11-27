@@ -20,6 +20,7 @@ import {
   getLearningStatusMeta,
   getJobSelectionMeta,
   getDepartureStatusMeta,
+  formatCertificationLabel,
 } from '../../utils/formatters';
 import {
   PROGRAM_TYPES,
@@ -39,7 +40,16 @@ import {
   FileSpreadsheet,
   Flame,
   AlertTriangle,
+  Award,
+  BadgeCheck,
 } from 'lucide-react';
+
+const CERT_TABS = ['jft', 'ssw', 'both'];
+const CERT_TAB_CONFIG = {
+  jft: { label: 'Punya JFT', icon: Award },
+  ssw: { label: 'Punya SSW', icon: Award },
+  both: { label: 'Punya JFT + SSW', icon: BadgeCheck },
+};
 
 export function StudentListPage() {
   const navigate = useNavigate();
@@ -48,12 +58,17 @@ export function StudentListPage() {
   const isViewer = profile?.role === 'viewer';
   const { success, error: toastError } = useToast();
 
-  const [activeTab, setActiveTab] = useState(
-    searchParams.get('tab') === 'trash' ? 'trash' : 'active'
-  );
+  const [activeTab, setActiveTab] = useState(() => {
+    const tabParam = searchParams.get('tab');
+    if (tabParam === 'trash') return 'trash';
+    if (CERT_TABS.includes(tabParam)) return tabParam;
+    return 'active';
+  });
+  const isCertTab = CERT_TABS.includes(activeTab);
   const [students, setStudents] = useState([]);
   const [totalCount, setTotalCount] = useState(0);
   const [trashCount, setTrashCount] = useState(0);
+  const [certCounts, setCertCounts] = useState({ jft: 0, ssw: 0, both: 0 });
   const [loading, setLoading] = useState(true);
 
   // Filters state
@@ -75,6 +90,14 @@ export function StudentListPage() {
 
   // Derive category filter (e.g. from Dashboard click: leave_cuti, interview_siap, entry_period, etc.)
   const activeCategoryFilter = useMemo(() => {
+    if (isCertTab) {
+      const labels = {
+        jft: 'Sudah Punya JFT-Basic (Belum di Jepang)',
+        ssw: 'Sudah Punya SSW (Belum di Jepang)',
+        both: 'Sudah Punya JFT + SSW Lengkap (Belum di Jepang)',
+      };
+      return { type: 'certCategory', value: activeTab, label: labels[activeTab] };
+    }
     if (!filterParam) return null;
     if (filterParam === 'leave_cuti') {
       return { type: 'leaveStatus', value: 'cuti', label: 'Izin Cuti / Nonaktif' };
@@ -110,7 +133,16 @@ export function StudentListPage() {
       return { type: 'departureReadiness', value: val, label: 'Kesiapan Keberangkatan: ' + val.replace(/_/g, ' ') };
     }
     return { type: 'custom', value: filterParam, label: filterParam.replace(/_/g, ' ') };
-  }, [filterParam]);
+  }, [filterParam, isCertTab, activeTab]);
+
+  // Sync tab from URL (mis. klik kartu sertifikat di Dashboard -> ?tab=jft/ssw/both)
+  useEffect(() => {
+    const tabParam = searchParams.get('tab');
+    if (tabParam === 'trash') setActiveTab('trash');
+    else if (CERT_TABS.includes(tabParam)) setActiveTab(tabParam);
+    else setActiveTab('active');
+    setCurrentPage(1);
+  }, [searchParams]);
 
   // Synchronize state when URL query params change (e.g. from Dashboard or navigation)
   useEffect(() => {
@@ -152,6 +184,15 @@ export function StudentListPage() {
     }
   }, []);
 
+  const fetchCertCounts = useCallback(async () => {
+    try {
+      const counts = await studentService.getCertificationCounts();
+      setCertCounts(counts);
+    } catch {
+      // ignore
+    }
+  }, []);
+
   const fetchStudents = useCallback(async () => {
     setLoading(true);
     try {
@@ -173,6 +214,7 @@ export function StudentListPage() {
       setStudents(res.data);
       setTotalCount(res.total);
       fetchTrashCount();
+      fetchCertCounts();
     } catch (err) {
       toastError('Gagal memuat data siswa.');
     } finally {
@@ -187,6 +229,7 @@ export function StudentListPage() {
     activeTab,
     activeCategoryFilter,
     fetchTrashCount,
+    fetchCertCounts,
     toastError,
   ]);
 
@@ -198,10 +241,11 @@ export function StudentListPage() {
     setActiveTab(newTab);
     setCurrentPage(1);
     const params = new URLSearchParams(searchParams);
-    if (newTab === 'trash') {
-      params.set('tab', 'trash');
-    } else {
+    params.delete('filter');
+    if (newTab === 'active') {
       params.delete('tab');
+    } else {
+      params.set('tab', newTab);
     }
     setSearchParams(params);
   };
@@ -212,9 +256,8 @@ export function StudentListPage() {
     setSelectedLearningStatus('');
     setSelectedJobStatus('');
     setCurrentPage(1);
-    const params = new URLSearchParams();
-    if (activeTab === 'trash') params.set('tab', 'trash');
-    setSearchParams(params);
+    setActiveTab('active');
+    setSearchParams(new URLSearchParams());
   };
 
   // Move to trash
@@ -377,6 +420,25 @@ export function StudentListPage() {
           {row.target_job_interest || '-'}
         </span>
       ),
+    },
+    {
+      header: 'SERTIFIKAT',
+      accessor: 'certifications',
+      render: (row) => {
+        const certs = row.certifications || [];
+        if (certs.length === 0) {
+          return <span style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>Belum ada</span>;
+        }
+        return (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+            {certs.map((c, i) => (
+              <Badge key={i} variant={c.cert_type === 'SSW' ? 'info' : 'success'}>
+                {formatCertificationLabel(c)}
+              </Badge>
+            ))}
+          </div>
+        );
+      },
     },
     {
       header: 'STATUS BELAJAR',
@@ -554,12 +616,20 @@ export function StudentListPage() {
       >
         <div>
           <h1 style={{ fontSize: '1.25rem', fontWeight: 700 }}>
-            {activeTab === 'trash' ? 'Tong Sampah Siswa' : 'Pangkalan Data Siswa BMU'}
+            {activeTab === 'trash'
+              ? 'Tong Sampah Siswa'
+              : isCertTab
+              ? `Siswa ${CERT_TAB_CONFIG[activeTab].label}`
+              : 'Pangkalan Data Siswa BMU'}
           </h1>
           <p style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>
             {activeTab === 'trash'
               ? 'Daftar siswa yang telah diarsipkan. Anda dapat memulihkan kembali atau menghapusnya secara permanen.'
-              : 'Daftar siswa resmi, pengelolaan profil, checklist dokumen, dan status pipeline'}
+              : isCertTab
+              ? activeTab === 'both'
+                ? 'Daftar siswa yang sudah memiliki sertifikat JFT-Basic dan SSW sekaligus (paket lengkap) — di luar siswa yang sudah berada di Jepang'
+                : `Daftar siswa yang sudah memiliki sertifikat ${activeTab === 'jft' ? 'JFT-Basic' : 'SSW (Tokutei Ginou)'} — di luar siswa yang sudah berada di Jepang`
+              : 'Daftar siswa yang masih aktif / sedang menunggu proses — siswa yang sudah berada di Jepang tidak ditampilkan di sini'}
           </p>
         </div>
 
@@ -622,13 +692,14 @@ export function StudentListPage() {
         </div>
       </div>
 
-      {/* Tabs: Siswa Aktif vs Tong Sampah */}
+      {/* Tabs: Siswa Aktif, Punya JFT, Punya SSW, Punya JFT + SSW, Tong Sampah */}
       <div
         style={{
           display: 'flex',
           gap: '8px',
           borderBottom: '1px solid var(--border-subtle)',
           paddingBottom: '2px',
+          flexWrap: 'wrap',
         }}
       >
         <button
@@ -664,6 +735,45 @@ export function StudentListPage() {
             </span>
           )}
         </button>
+
+        {CERT_TABS.map((tabId) => {
+          const TabIcon = CERT_TAB_CONFIG[tabId].icon;
+          const isActive = activeTab === tabId;
+          return (
+            <button
+              key={tabId}
+              type="button"
+              onClick={() => handleTabChange(tabId)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '8px 16px',
+                fontSize: '0.875rem',
+                fontWeight: isActive ? 600 : 500,
+                color: isActive ? 'var(--text-primary)' : 'var(--text-tertiary)',
+                borderBottom: isActive ? '2px solid var(--text-primary)' : '2px solid transparent',
+                backgroundColor: 'transparent',
+                cursor: 'pointer',
+                transition: 'all var(--transition-fast)',
+              }}
+            >
+              <TabIcon size={16} />
+              <span>{CERT_TAB_CONFIG[tabId].label}</span>
+              <span
+                style={{
+                  fontSize: '0.75rem',
+                  backgroundColor: 'var(--bg-surface-elevated)',
+                  padding: '1px 6px',
+                  borderRadius: '10px',
+                  border: '1px solid var(--border-subtle)',
+                }}
+              >
+                {certCounts[tabId]}
+              </span>
+            </button>
+          );
+        })}
 
         <button
           type="button"
@@ -755,7 +865,7 @@ export function StudentListPage() {
               placeholder=""
             />
 
-            {activeTab === 'active' ? (
+            {activeTab !== 'trash' ? (
               <Select
                 value={selectedLearningStatus}
                 onChange={(e) => {
@@ -808,6 +918,8 @@ export function StudentListPage() {
               title={
                 activeTab === 'trash'
                   ? 'Tong Sampah Kosong'
+                  : isCertTab
+                  ? `Belum Ada Siswa ${CERT_TAB_CONFIG[activeTab].label}`
                   : searchQuery || selectedProgram
                   ? 'Tidak Ada Siswa Sesuai Kriteria'
                   : 'Belum Ada Siswa Terdaftar'
@@ -815,6 +927,10 @@ export function StudentListPage() {
               description={
                 activeTab === 'trash'
                   ? 'Tidak ada siswa yang sedang berada di dalam Tong Sampah.'
+                  : isCertTab
+                  ? activeTab === 'both'
+                    ? 'Belum ada siswa yang memiliki sertifikat JFT-Basic dan SSW sekaligus. Tambahkan sertifikatnya lewat tab 3. Bahasa & SSW pada profil siswa.'
+                    : `Belum ada siswa yang tercatat memiliki sertifikat ${activeTab === 'jft' ? 'JFT-Basic' : 'SSW'}. Tambahkan sertifikatnya lewat tab 3. Bahasa & SSW pada profil siswa.`
                   : searchQuery || selectedProgram
                   ? 'Coba sesuaikan kata kunci pencarian atau reset filter yang dipilih.'
                   : 'Pangkalan data belum memiliki siswa. Klik tombol di bawah untuk mendaftarkan siswa pertama.'
@@ -822,12 +938,16 @@ export function StudentListPage() {
               actionLabel={
                 activeTab === 'trash'
                   ? 'Kembali ke Siswa Aktif'
+                  : isCertTab
+                  ? 'Kembali ke Semua Siswa Aktif'
                   : searchQuery || selectedProgram
                   ? 'Reset Filter'
                   : 'Tambah Siswa Baru'
               }
               onAction={
                 activeTab === 'trash'
+                  ? () => handleTabChange('active')
+                  : isCertTab
                   ? () => handleTabChange('active')
                   : searchQuery || selectedProgram
                   ? handleResetFilters
@@ -842,7 +962,7 @@ export function StudentListPage() {
             columns={activeTab === 'trash' ? trashColumns : activeColumns}
             data={students}
             onRowClick={(row) => {
-              if (activeTab === 'active') navigate(`/students/${row.id}`);
+              if (activeTab !== 'trash') navigate(`/students/${row.id}`);
             }}
           />
 

@@ -26,6 +26,8 @@ import {
 import {
   formatDate,
   calculateAge,
+  formatStudyDuration,
+  calculateStudyDuration,
   getLearningStatusMeta,
   getJobSelectionMeta,
   getDepartureStatusMeta,
@@ -103,6 +105,7 @@ export function ReportsExplorerPage() {
     'learning_status',
     'selection_status',
     'matched_company',
+    'study_duration',
   ]);
 
   const availableColumns = [
@@ -116,6 +119,7 @@ export function ReportsExplorerPage() {
     { id: 'program', label: 'Program Pelatihan (SSW/Magang)' },
     { id: 'job_interest', label: 'Bidang Minat Kerja' },
     { id: 'entry_date', label: 'Tanggal Masuk BMU' },
+    { id: 'study_duration', label: 'Lama Belajar (dari Tgl Masuk)' },
     { id: 'certs', label: 'Sertifikasi & Kualifikasi Bahasa' },
     { id: 'learning_status', label: 'Status Pembelajaran' },
     { id: 'selection_status', label: 'Status Seleksi Kerja' },
@@ -235,6 +239,8 @@ export function ReportsExplorerPage() {
           'Kesiapan Keberangkatan': dr.label,
           'Status Keberangkatan': getDepartureStatusMeta(s.student_journey?.departure_status).label,
           'Tanggal Masuk': formatDate(s.entry_date),
+          'Lama Belajar': formatStudyDuration(s.entry_date),
+          'Lama Belajar (Bulan)': calculateStudyDuration(s.entry_date)?.totalMonths ?? '-',
         };
       });
 
@@ -361,6 +367,20 @@ export function ReportsExplorerPage() {
           </div>
         );
       },
+    },
+    {
+      header: 'LAMA BELAJAR',
+      accessor: 'study_duration',
+      render: (row) => (
+        <div style={{ fontSize: '0.8125rem', whiteSpace: 'nowrap' }}>
+          <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
+            {formatStudyDuration(row.entry_date)}
+          </div>
+          <div style={{ color: 'var(--text-tertiary)', fontSize: '0.75rem' }}>
+            Masuk: {formatDate(row.entry_date)}
+          </div>
+        </div>
+      ),
     },
     {
       header: 'STATUS BELAJAR',

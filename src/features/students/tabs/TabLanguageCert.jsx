@@ -6,11 +6,20 @@ import { Select } from '../../../components/ui/Select';
 import { Badge } from '../../../components/ui/Badge';
 import { Modal } from '../../../components/ui/Modal';
 import { CERTIFICATION_TYPES, JOB_INTEREST_FIELDS } from '../../../utils/constants';
-import { formatDate, formatCertificationLabel } from '../../../utils/formatters';
+import { formatDate, formatCertificationLabel, formatFileSize } from '../../../utils/formatters';
 import { studentService } from '../../../services/studentService';
+import { documentService } from '../../../services/documentService';
 import { useAuth } from '../../../hooks/useAuth';
 import { useToast } from '../../../hooks/useToast';
-import { Award, Plus, Trash2, Edit2 } from 'lucide-react';
+import { Award, Plus, Trash2, Edit2, Upload, FileText, ExternalLink, X } from 'lucide-react';
+
+const MAX_CERT_FILE_SIZE = 10 * 1024 * 1024; // 10MB, mengikuti batas bucket student-documents
+
+function getFileNameFromPath(storagePath) {
+  if (!storagePath) return '';
+  const parts = String(storagePath).split('/');
+  return parts[parts.length - 1] || storagePath;
+}
 
 export function TabLanguageCert({ student, onUpdate, isViewer: isViewerProp }) {
   const { profile, isViewer: authViewer } = useAuth();
@@ -20,8 +29,9 @@ export function TabLanguageCert({ student, onUpdate, isViewer: isViewerProp }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingIdx, setEditingIdx] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [selectedFile, setSelectedFile] = useState(null);
 
-  const [formData, setFormData] = useState({
+  const emptyForm = {
     cert_type: 'JFT_BASIC',
     cert_level: 'A2',
     score: '',
@@ -30,25 +40,21 @@ export function TabLanguageCert({ student, onUpdate, isViewer: isViewerProp }) {
     certificate_number: '',
     verification_status: 'unverified',
     reviewer_notes: '',
-  });
+    file_storage_path: '',
+  };
+
+  const [formData, setFormData] = useState(emptyForm);
 
   const openAdd = () => {
     setEditingIdx(null);
-    setFormData({
-      cert_type: 'JFT_BASIC',
-      cert_level: 'A2',
-      score: '',
-      test_date: '',
-      issue_date: '',
-      certificate_number: '',
-      verification_status: 'unverified',
-      reviewer_notes: '',
-    });
+    setSelectedFile(null);
+    setFormData(emptyForm);
     setIsModalOpen(true);
   };
 
   const openEdit = (item, idx) => {
     setEditingIdx(idx);
+    setSelectedFile(null);
     setFormData({
       cert_type: item.cert_type || 'JFT_BASIC',
       cert_level: item.cert_level || '',
@@ -58,24 +64,95 @@ export function TabLanguageCert({ student, onUpdate, isViewer: isViewerProp }) {
       certificate_number: item.certificate_number || '',
       verification_status: item.verification_status || 'unverified',
       reviewer_notes: item.reviewer_notes || '',
+      file_storage_path: item.file_storage_path || '',
     });
     setIsModalOpen(true);
+  };
+
+  const handleFileChange = (e) => {
+    const file = e.target.files?.[0] || null;
+    // Reset value agar file yang sama bisa dipilih ulang setelah dibatalkan
+    e.target.value = '';
+    if (!file) {
+      setSelectedFile(null);
+      return;
+    }
+    const isPdf = file.type === 'application/pdf' || /\.pdf$/i.test(file.name || '');
+    if (!isPdf) {
+      toastError('File sertifikat harus berformat PDF.');
+      return;
+    }
+    if (file.size > MAX_CERT_FILE_SIZE) {
+      toastError('Ukuran file PDF maksimal 10MB.');
+      return;
+    }
+    setSelectedFile(file);
+  };
+
+  const handleOpenFile = async (storagePath) => {
+    if (!storagePath) return;
+    try {
+      const url = await documentService.getSignedUrl(storagePath, 300); // berlaku 5 menit
+      if (url) {
+        window.open(url, '_blank', 'noopener,noreferrer');
+      } else {
+        toastError('Gagal membuat tautan akses file sertifikat.');
+      }
+    } catch (err) {
+      toastError('Gagal membuka file sertifikat.');
+    }
+  };
+
+  const handleRemoveFile = async (item, idx) => {
+    if (!item.file_storage_path) return;
+    if (!window.confirm('Hapus file PDF sertifikat ini? Data sertifikatnya tetap tersimpan.')) return;
+    try {
+      const updated = [...certs];
+      updated[idx] = { ...updated[idx], file_storage_path: null };
+      await studentService.saveCertifications(student.id, updated);
+      setCerts(updated);
+      await documentService.removeCertificationFile(item.file_storage_path);
+      success('File PDF sertifikat berhasil dihapus.');
+      onUpdate?.();
+    } catch (err) {
+      toastError(err.message || 'Gagal menghapus file sertifikat.');
+    }
   };
 
   const handleSave = async (e) => {
     e.preventDefault();
     setIsLoading(true);
     try {
+      // Unggah PDF dulu bila ada file baru yang dipilih, path-nya disimpan ke data sertifikat
+      let savedForm = { ...formData };
+      if (selectedFile) {
+        const uploaded = await documentService.uploadCertificationFile({
+          studentId: student.id,
+          certType: formData.cert_type,
+          file: selectedFile,
+          actorProfile: profile,
+        });
+        savedForm = { ...savedForm, file_storage_path: uploaded.path };
+      }
+
       let updated;
       if (editingIdx !== null) {
         updated = [...certs];
-        updated[editingIdx] = formData;
+        updated[editingIdx] = savedForm;
       } else {
-        updated = [...certs, formData];
+        updated = [...certs, savedForm];
       }
 
       await studentService.saveCertifications(student.id, updated);
+
+      // File lama diganti file baru -> hapus file lama dari storage agar tidak menumpuk
+      const previousPath = editingIdx !== null ? certs[editingIdx]?.file_storage_path : null;
+      if (selectedFile && previousPath && previousPath !== savedForm.file_storage_path) {
+        await documentService.removeCertificationFile(previousPath);
+      }
+
       setCerts(updated);
+      setSelectedFile(null);
       success('Sertifikasi bahasa & keahlian berhasil diperbarui.');
       setIsModalOpen(false);
       onUpdate?.();
@@ -89,9 +166,13 @@ export function TabLanguageCert({ student, onUpdate, isViewer: isViewerProp }) {
   const handleDelete = async (idx) => {
     if (!window.confirm('Hapus sertifikat ini?')) return;
     try {
+      const removed = certs[idx];
       const updated = certs.filter((_, i) => i !== idx);
       await studentService.saveCertifications(student.id, updated);
       setCerts(updated);
+      if (removed?.file_storage_path) {
+        await documentService.removeCertificationFile(removed.file_storage_path);
+      }
       success('Sertifikat berhasil dihapus.');
       onUpdate?.();
     } catch (err) {
@@ -103,7 +184,7 @@ export function TabLanguageCert({ student, onUpdate, isViewer: isViewerProp }) {
     <Card>
       <CardHeader
         title="Bahasa & Sertifikasi (JFT, JLPT, SSW)"
-        subtitle="Sertifikat kemampuan bahasa Jepang dan keterampilan kerja resmi"
+        subtitle="Sertifikat kemampuan bahasa Jepang dan keterampilan kerja resmi — file PDF sertifikat dapat diunggah di sini"
       >
         {!isReadOnly && (
           <Button variant="secondary" size="sm" icon={Plus} onClick={openAdd}>
@@ -158,6 +239,34 @@ export function TabLanguageCert({ student, onUpdate, isViewer: isViewerProp }) {
                     {item.score ? `Nilai/Skor: ${item.score}  •  ` : ''}
                     {item.certificate_number ? `No. Sertifikat: ${item.certificate_number}  •  ` : ''}
                     Tanggal Tes: {formatDate(item.test_date)}
+                  </div>
+                  <div style={{ fontSize: '0.8125rem', marginTop: '4px' }}>
+                    {item.file_storage_path ? (
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', color: 'var(--text-secondary)' }}>
+                        <FileText size={14} style={{ color: 'var(--status-success-text)' }} />
+                        <span>
+                          File PDF: <strong style={{ color: 'var(--text-primary)' }}>{getFileNameFromPath(item.file_storage_path)}</strong>
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleOpenFile(item.file_storage_path)}
+                          style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--accent-primary)', fontWeight: 600, fontSize: '0.8125rem' }}
+                        >
+                          <ExternalLink size={13} /> Lihat PDF
+                        </button>
+                        {!isReadOnly && (
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveFile(item, idx)}
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--status-danger-text)', fontWeight: 600, fontSize: '0.8125rem' }}
+                          >
+                            <X size={13} /> Hapus File
+                          </button>
+                        )}
+                      </span>
+                    ) : (
+                      <span style={{ color: 'var(--text-tertiary)' }}>Belum ada file PDF sertifikat terunggah</span>
+                    )}
                   </div>
                 </div>
 
@@ -271,6 +380,59 @@ export function TabLanguageCert({ student, onUpdate, isViewer: isViewerProp }) {
                 { value: 'rejected', label: 'Ditolak / Perlu Revisi' },
               ]}
             />
+          </div>
+
+          {/* Upload File PDF Sertifikat */}
+          <div className="form-group">
+            <label className="form-label">
+              <span>File Sertifikat (PDF)</span>
+            </label>
+            <div
+              style={{
+                border: '2px dashed var(--border-default)',
+                borderRadius: 'var(--radius-lg)',
+                padding: '20px',
+                textAlign: 'center',
+                backgroundColor: 'var(--bg-app)',
+              }}
+            >
+              <input
+                type="file"
+                accept="application/pdf,.pdf"
+                id="cert-file-input"
+                style={{ display: 'none' }}
+                onChange={handleFileChange}
+              />
+              <label htmlFor="cert-file-input" style={{ cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                <Upload size={28} style={{ color: 'var(--text-tertiary)' }} />
+                <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                  {selectedFile
+                    ? selectedFile.name
+                    : formData.file_storage_path
+                    ? getFileNameFromPath(formData.file_storage_path)
+                    : 'Pilih file PDF sertifikat'}
+                </span>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>
+                  {selectedFile
+                    ? `${formatFileSize(selectedFile.size)} — klik Simpan untuk mengunggah`
+                    : formData.file_storage_path
+                    ? 'Sudah terunggah — klik untuk mengganti file'
+                    : 'Format PDF, maksimal 10MB per file'}
+                </span>
+              </label>
+              {selectedFile && (
+                <button
+                  type="button"
+                  onClick={() => setSelectedFile(null)}
+                  style={{ marginTop: '10px', display: 'inline-flex', alignItems: 'center', gap: '4px', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--status-danger-text)', fontWeight: 600, fontSize: '0.8125rem' }}
+                >
+                  <X size={13} /> Batalkan Pilihan File
+                </button>
+              )}
+            </div>
+            <span className="form-help-text">
+              File disimpan aman di private storage BMU dan dapat dibuka kembali lewat tombol &quot;Lihat PDF&quot;.
+            </span>
           </div>
         </form>
       </Modal>

@@ -68,6 +68,8 @@ export const studentService = {
     leaveStatus = '',
     interviewReadiness = '',
     entryPeriod = false,
+    certCategory = '', // '' | 'jft' | 'ssw' | 'both' — siswa pemilik sertifikat (di luar yang sudah di Jepang)
+    includeDeparted = false, // true = ikutkan siswa yang sudah di Jepang (mis. halaman Journey)
     sortBy = 'created_at',
     sortAsc = false,
     includeArchived = false,
@@ -119,6 +121,11 @@ export const studentService = {
       // Sorting
       query = query.order(sortBy, { ascending: sortAsc });
 
+      // Siswa AKTIF = belum diarsipkan & belum berangkat ke Jepang.
+      // Kecuali: Tong Sampah, pemanggil yang meminta includeDeparted, atau filter
+      // yang memang khusus meminta status "Sudah Berangkat ke Jepang".
+      const excludeDeparted = !onlyArchived && !includeDeparted && departureStatus !== 'sudah_berangkat';
+
       const hasJourneyFilter = Boolean(
         learningStatus ||
         jobStatus ||
@@ -126,7 +133,9 @@ export const studentService = {
         departureReadiness ||
         leaveStatus ||
         interviewReadiness ||
-        entryPeriod
+        entryPeriod ||
+        certCategory ||
+        excludeDeparted
       );
 
       // Trigger one-time asynchronous database synchronization for legacy records
@@ -160,6 +169,13 @@ export const studentService = {
 
       // Always normalize journey rules first before evaluating filters
       let filteredData = (data || []).map((s) => this.normalizeStudentJourney(s));
+
+      // Siswa aktif hanya yang masih dalam proses (belum berangkat ke Jepang)
+      if (excludeDeparted) {
+        filteredData = filteredData.filter(
+          (s) => s.student_journey?.departure_status !== 'sudah_berangkat'
+        );
+      }
 
       // Filter: Leave status (Izin Cuti / Dicutikan Lembaga)
       // Note: Siswa yang sudah_berangkat atau lulus otomatis dinormalkan ke 'normal'
@@ -218,6 +234,22 @@ export const studentService = {
         });
       }
 
+      // Filter: Kepemilikan sertifikat Bahasa & SSW (dipisah per kategori)
+      // JFT = sertifikat JFT-Basic, SSW = sertifikat keahlian SSW (Tokutei Ginou)
+      // Siswa yang sudah berangkat ke Jepang TIDAK dihitung/ditampilkan di kategori ini
+      if (certCategory) {
+        filteredData = filteredData.filter((s) => {
+          if (s.student_journey?.departure_status === 'sudah_berangkat') return false;
+          const certs = s.certifications || [];
+          const hasJft = certs.some((c) => c.cert_type === 'JFT_BASIC');
+          const hasSsw = certs.some((c) => c.cert_type === 'SSW');
+          if (certCategory === 'jft') return hasJft;
+          if (certCategory === 'ssw') return hasSsw;
+          if (certCategory === 'both') return hasJft && hasSsw;
+          return true;
+        });
+      }
+
       const total = filteredData.length;
       const from = (page - 1) * pageSize;
       const paginatedData = filteredData.slice(from, from + pageSize);
@@ -247,12 +279,7 @@ export const studentService = {
           *,
           student_journey (*),
           education_histories (*),
-          work_experiences (*),
-          family_members (*),
           certifications (*),
-          student_documents (*),
-          student_preferences (*),
-          student_finances (*),
           student_status_history (*)
         `)
         .eq('id', id)
@@ -616,6 +643,24 @@ export const studentService = {
   },
 
   /**
+   * Hitung jumlah siswa aktif per kategori sertifikat (untuk badge tab Daftar Siswa)
+   * @returns {Promise<{jft: number, ssw: number, both: number}>}
+   */
+  async getCertificationCounts() {
+    if (!isSupabaseConfigured) return { jft: 0, ssw: 0, both: 0 };
+    try {
+      const [jft, ssw, both] = await Promise.all([
+        this.getStudents({ page: 1, pageSize: 1, certCategory: 'jft' }),
+        this.getStudents({ page: 1, pageSize: 1, certCategory: 'ssw' }),
+        this.getStudents({ page: 1, pageSize: 1, certCategory: 'both' }),
+      ]);
+      return { jft: jft.total || 0, ssw: ssw.total || 0, both: both.total || 0 };
+    } catch {
+      return { jft: 0, ssw: 0, both: 0 };
+    }
+  },
+
+  /**
    * Restore a student from trash bin to active students
    */
   async restoreStudent(id, actorProfile) {
@@ -685,41 +730,6 @@ export const studentService = {
     }
   },
 
-  async saveWorkExperiences(studentId, workList) {
-    if (!isSupabaseConfigured) return;
-    await supabase.from('work_experiences').delete().eq('student_id', studentId);
-    if (workList.length > 0) {
-      const formatted = workList.map(w => ({
-        student_id: studentId,
-        company_name: w.company_name,
-        industry_sector: w.industry_sector || null,
-        position: w.position || null,
-        start_date: w.start_date || null,
-        end_date: w.end_date || null,
-        job_description: w.job_description || null,
-      }));
-      const { error } = await supabase.from('work_experiences').insert(formatted);
-      if (error) throw error;
-    }
-  },
-
-  async saveFamilyMembers(studentId, familyList) {
-    if (!isSupabaseConfigured) return;
-    await supabase.from('family_members').delete().eq('student_id', studentId);
-    if (familyList.length > 0) {
-      const formatted = familyList.map(f => ({
-        student_id: studentId,
-        relation: f.relation,
-        full_name: f.full_name,
-        age: f.age ? parseInt(f.age) : null,
-        occupation: f.occupation || null,
-        phone_number: f.phone_number || null,
-      }));
-      const { error } = await supabase.from('family_members').insert(formatted);
-      if (error) throw error;
-    }
-  },
-
   async saveCertifications(studentId, certList) {
     if (!isSupabaseConfigured) return;
     await supabase.from('certifications').delete().eq('student_id', studentId);
@@ -734,6 +744,7 @@ export const studentService = {
         expiry_date: c.expiry_date || null,
         certificate_number: c.certificate_number || null,
         verification_status: c.verification_status || 'unverified',
+        file_storage_path: c.file_storage_path || null,
         reviewer_notes: c.reviewer_notes || null,
       }));
       const { error } = await supabase.from('certifications').insert(formatted);
@@ -753,26 +764,6 @@ export const studentService = {
         notes: preferences.notes || null,
       }, { onConflict: 'student_id' });
     if (error) throw error;
-  },
-
-  async saveFinances(studentId, finances, actorProfile) {
-    if (!isSupabaseConfigured) return;
-    await supabase.from('student_finances').delete().eq('student_id', studentId);
-    if (finances.length > 0) {
-      const formatted = finances.map(f => ({
-        student_id: studentId,
-        fee_category: f.fee_category,
-        total_amount: parseFloat(f.total_amount) || 0,
-        paid_amount: parseFloat(f.paid_amount) || 0,
-        payment_status: f.payment_status || 'belum_bayar',
-        payment_date: f.payment_date || null,
-        receipt_number: f.receipt_number || null,
-        notes: f.notes || null,
-        created_by: actorProfile?.id || null,
-      }));
-      const { error } = await supabase.from('student_finances').insert(formatted);
-      if (error) throw error;
-    }
   },
 
   /**

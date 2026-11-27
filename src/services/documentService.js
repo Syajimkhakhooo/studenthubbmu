@@ -66,6 +66,65 @@ export const documentService = {
   },
 
   /**
+   * Upload file PDF sertifikat Bahasa & SSW ke private Supabase Storage.
+   * Path disimpan ke kolom certifications.file_storage_path agar bisa
+   * dibuka kembali lewat signed URL (bucket bersifat privat).
+   *
+   * @returns {Promise<{ path: string, fileName: string, fileSize: number }>}
+   */
+  async uploadCertificationFile({ studentId, certType, file, actorProfile }) {
+    if (!isSupabaseConfigured) throw new Error('Supabase belum terhubung.');
+    if (actorProfile?.role === 'viewer') {
+      throw new Error('Akun Viewer (Hanya Lihat) tidak diizinkan mengunggah sertifikat.');
+    }
+    if (!file) throw new Error('Harap pilih file PDF sertifikat terlebih dahulu.');
+
+    const isPdf = file.type === 'application/pdf' || /\.pdf$/i.test(file.name || '');
+    if (!isPdf) {
+      throw new Error('File sertifikat harus berformat PDF.');
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      throw new Error('Ukuran file PDF maksimal 10MB.');
+    }
+
+    try {
+      const safeCertType = String(certType || 'sertifikat').toLowerCase().replace(/[^a-z0-9]+/g, '-');
+      const storagePath = `${studentId}/sertifikat/${safeCertType}_${Date.now()}.pdf`;
+
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from(BUCKET_NAME)
+        .upload(storagePath, file, {
+          cacheControl: '3600',
+          upsert: true,
+          contentType: 'application/pdf',
+        });
+
+      if (uploadError) throw uploadError;
+
+      return {
+        path: uploadData.path,
+        fileName: file.name,
+        fileSize: file.size,
+      };
+    } catch (err) {
+      console.error('Error uploading certification file:', err);
+      throw err;
+    }
+  },
+
+  /**
+   * Hapus file sertifikat dari private Supabase Storage (best effort).
+   */
+  async removeCertificationFile(storagePath) {
+    if (!isSupabaseConfigured || !storagePath) return;
+    try {
+      await supabase.storage.from(BUCKET_NAME).remove([storagePath]);
+    } catch (err) {
+      console.warn('Gagal menghapus file sertifikat lama:', err);
+    }
+  },
+
+  /**
    * Generate short-lived signed URL for private document
    */
   async getSignedUrl(storagePath, expiresIn = 300) {

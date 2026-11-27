@@ -56,6 +56,48 @@ export function calculateAge(birthDate) {
   }
 }
 
+/**
+ * Hitung lama belajar siswa dari tanggal masuk (entry_date) sampai hari ini.
+ * @returns {{ totalMonths: number, label: string } | null} null bila tanggal tidak valid
+ * Contoh label: "1 thn 3 bln (15 bln)", "8 bln", "Baru masuk (< 1 bln)"
+ */
+export function calculateStudyDuration(entryDate, referenceDate = new Date()) {
+  if (!entryDate) return null;
+  try {
+    const start = new Date(entryDate);
+    if (isNaN(start.getTime())) return null;
+
+    const end = referenceDate instanceof Date ? referenceDate : new Date(referenceDate);
+    if (isNaN(end.getTime())) return null;
+
+    let totalMonths =
+      (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth());
+    // Bulan terakhir belum genap bila tanggal hari ini < tanggal masuk pada bulannya
+    if (end.getDate() < start.getDate()) totalMonths -= 1;
+    if (totalMonths < 0) totalMonths = 0;
+
+    const years = Math.floor(totalMonths / 12);
+    const months = totalMonths % 12;
+
+    let label;
+    if (totalMonths === 0) label = 'Baru masuk (< 1 bln)';
+    else if (years === 0) label = `${months} bln`;
+    else if (months === 0) label = `${years} thn (${totalMonths} bln)`;
+    else label = `${years} thn ${months} bln (${totalMonths} bln)`;
+
+    return { totalMonths, label };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Label lama belajar siap tampil (mengembalikan '-' bila tidak ada tanggal masuk)
+ */
+export function formatStudyDuration(entryDate, referenceDate = new Date()) {
+  return calculateStudyDuration(entryDate, referenceDate)?.label || '-';
+}
+
 export function formatCurrency(amount) {
   if (amount === undefined || amount === null) return 'Rp 0';
   return new Intl.NumberFormat('id-ID', {
